@@ -44,14 +44,6 @@
 // Enabled kernel sets (kernel_list)
 @kernel_list_defines@
 
-#if @enable_openmp@
-#define BLIS_ENABLE_OPENMP
-#endif
-
-#if @enable_pthreads@
-#define BLIS_ENABLE_PTHREADS
-#endif
-
 #if @enable_packbuf_pools@
 #define BLIS_ENABLE_PACKBUF_POOLS
 #endif

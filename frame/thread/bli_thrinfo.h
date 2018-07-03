@@ -35,27 +35,21 @@
 #ifndef BLIS_THRINFO_H
 #define BLIS_THRINFO_H
 
+// Include thread communicator object definitions and prototypes.
+#include "tci.h"
+
 // Thread info structure definition
 struct thrinfo_s
 {
 	// The thread communicator for the other threads sharing the same work
 	// at this level.
-	thrcomm_t*         ocomm;
+	tci_comm*          comm;
 
-	// Our thread id within the ocomm thread communicator.
-	dim_t              ocomm_id;
-
-	// The number of distinct threads used to parallelize the loop.
-	dim_t              n_way;
-
-	// What we're working on.
-	dim_t              work_id;
-
-	// When freeing, should the communicators in this node be freed? Usually,
-	// this is field is true, but when nodes are created that share the same
-	// communicators as other nodes (such as with packm nodes), this is set
-	// to false.
-	bool_t             free_comm;
+    // When freeing, should the communicators in this node be freed? Usually,
+    // this is field is true, but when nodes are created that share the same
+    // communicators as other nodes (such as with packm nodes), this is set
+    // to false.
+    bool_t             free_comm;
 
 	struct thrinfo_s*  sub_node;
 };
@@ -71,27 +65,27 @@ typedef struct thrinfo_s thrinfo_t;
 
 static dim_t bli_thread_num_threads( thrinfo_t* t )
 {
-	return (t->ocomm)->n_threads;
+	return t->comm->nthread;
 }
 
 static dim_t bli_thread_ocomm_id( thrinfo_t* t )
 {
-	return t->ocomm_id;
+	return t->comm->tid;
 }
 
 static dim_t bli_thread_n_way( thrinfo_t* t )
 {
-	return t->n_way;
+	return t->comm->ngang;
 }
 
 static dim_t bli_thread_work_id( thrinfo_t* t )
 {
-	return t->work_id;
+	return t->comm->gid;
 }
 
-static thrcomm_t* bli_thrinfo_ocomm( thrinfo_t* t )
+static tci_comm* bli_thrinfo_ocomm( thrinfo_t* t )
 {
-	return t->ocomm;
+	return &(t->comm);
 }
 
 static bool_t bli_thrinfo_needs_free_comm( thrinfo_t* t )
@@ -108,7 +102,7 @@ static thrinfo_t* bli_thrinfo_sub_node( thrinfo_t* t )
 
 static bool_t bli_thread_am_ochief( thrinfo_t* t )
 {
-	return t->ocomm_id == 0;
+	return t->comm->tid == 0;
 }
 
 // thrinfo_t modification
@@ -122,12 +116,13 @@ static void bli_thrinfo_set_sub_node( thrinfo_t* sub_node, thrinfo_t* t )
 
 static void* bli_thread_obroadcast( thrinfo_t* t, void* p )
 {
-	return bli_thrcomm_bcast( t->ocomm, t->ocomm_id, p );
+    tci_comm_bcast( bli_thrinfo_ocomm( t ), &p, 0 );
+    return p;
 }
 
 static void bli_thread_obarrier( thrinfo_t* t )
 {
-	bli_thrcomm_barrier( t->ocomm, t->ocomm_id );
+    tci_comm_barrier( bli_thrinfo_ocomm( t ) );
 }
 
 
@@ -137,10 +132,7 @@ static void bli_thread_obarrier( thrinfo_t* t )
 
 thrinfo_t* bli_thrinfo_create
      (
-       thrcomm_t* ocomm,
-       dim_t      ocomm_id,
-       dim_t      n_way,
-       dim_t      work_id, 
+       tci_comm*  comm,
        bool_t     free_comm,
        thrinfo_t* sub_node
      );
@@ -148,10 +140,7 @@ thrinfo_t* bli_thrinfo_create
 void bli_thrinfo_init
      (
        thrinfo_t* thread,
-       thrcomm_t* ocomm,
-       dim_t      ocomm_id,
-       dim_t      n_way,
-       dim_t      work_id, 
+       tci_comm*  comm,
        bool_t     free_comm,
        thrinfo_t* sub_node
      );
@@ -176,14 +165,6 @@ void bli_thrinfo_grow
        cntx_t*    cntx,
        cntl_t*    cntl,
        thrinfo_t* thread
-     );
-
-thrinfo_t* bli_thrinfo_rgrow
-     (
-       cntx_t*    cntx,
-       cntl_t*    cntl_par,
-       cntl_t*    cntl_cur,
-       thrinfo_t* thread_par
      );
 
 #endif

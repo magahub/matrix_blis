@@ -46,7 +46,7 @@
 #
 
 .PHONY: all \
-        libs libblis \
+        libs libblis tci \
         check-env check-env-mk check-env-fragments check-env-make-defs \
         flat-header flat-cblas-header \
         test \
@@ -105,6 +105,7 @@ BASE_OBJ_FRAME_PATH    := $(BASE_OBJ_PATH)/$(FRAME_DIR)
 BASE_OBJ_REFKERN_PATH  := $(BASE_OBJ_PATH)/$(REFKERN_DIR)
 BASE_OBJ_KERNELS_PATH  := $(BASE_OBJ_PATH)/$(KERNELS_DIR)
 BASE_OBJ_SANDBOX_PATH  := $(BASE_OBJ_PATH)/$(SANDBOX_DIR)
+BASE_OBJ_TCI_PATH      := $(BASE_OBJ_PATH)/$(TCI_DIR)
 
 # --- Define install target names for static libraries ---
 
@@ -551,6 +552,18 @@ $(foreach suf, $(SANDBOX_CXX_SUFS), \
 $(foreach conf, $(CONFIG_NAME), $(eval $(call make-cxx-sandbox-rule,$(conf),$(suf)))))
 
 
+# --- TCI ---
+
+tci:
+	$(MAKE) -C tci
+
+clean-tci:
+	$(MAKE) -C tci clean
+
+distclean-tci:
+	$(MAKE) -C tci distclean
+
+
 # --- All-purpose library rule (static and shared) ---
 
 libblis: check-env $(MK_LIBS)
@@ -558,7 +571,7 @@ libblis: check-env $(MK_LIBS)
 
 # --- Static library archiver rules ---
 
-$(LIBBLIS_A_PATH): $(MK_BLIS_OBJS)
+$(LIBBLIS_A_PATH): $(MK_BLIS_OBJS) tci
 ifeq ($(ENABLE_VERBOSE),yes)
 	$(AR) $(ARFLAGS) $@ $?
 	$(RANLIB) $@
@@ -571,7 +584,7 @@ endif
 
 # --- Dynamic library linker rules ---
 
-$(LIBBLIS_SO_PATH): $(MK_BLIS_OBJS)
+$(LIBBLIS_SO_PATH): $(MK_BLIS_OBJS) tci
 ifeq ($(ENABLE_VERBOSE),yes)
 	$(LINKER) $(SOFLAGS) $(LDFLAGS) -o $@ $?
 else 
@@ -850,7 +863,6 @@ showconfig: check-env
 	@echo "install libdir:        $(INSTALL_LIBDIR)"
 	@echo "install includedir:    $(INSTALL_INCDIR)"
 	@echo "debugging status:      $(DEBUG_TYPE)"
-	@echo "multithreading status: $(THREADING_MODEL)"
 	@echo "enable BLAS API?       $(MK_ENABLE_BLAS)"
 	@echo "enable CBLAS API?      $(MK_ENABLE_CBLAS)"
 	@echo "build static library?  $(MK_ENABLE_STATIC)"
@@ -893,7 +905,7 @@ else
 endif
 endif
 
-cleanlib:
+cleanlib: clean-tci
 ifeq ($(IS_CONFIGURED),yes)
 ifeq ($(ENABLE_VERBOSE),yes)
 	- $(FIND) $(BASE_OBJ_PATH) -name "*.o" | $(XARGS) $(RM_F)
@@ -989,7 +1001,7 @@ else
 endif # ENABLE_VERBOSE
 endif # IS_CONFIGURED
 
-distclean: cleanmk cleanh cleanlib cleantest
+distclean: cleanmk cleanh cleanlib cleantest distclean-tci
 ifeq ($(IS_CONFIGURED),yes)
 ifeq ($(ENABLE_VERBOSE),yes)
 	- $(RM_F) $(BLIS_CONFIG_H)

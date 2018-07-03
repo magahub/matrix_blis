@@ -121,9 +121,9 @@ print_usage()
 	echo "   -t MODEL, --enable-threading[=MODEL], --disable-threading"
 	echo " "
 	echo "                 Enable threading in the library, using threading model"
-	echo "                 MODEL={openmp,pthreads,no}. If MODEL=no or "
-	echo "                 --disable-threading is specified, threading will be"
-	echo "                 disabled. The default is 'no'."
+	echo "                 MODEL={openmp,pthreads,tbb,dispatch,auto,no}. If MODEL=no"
+	echo "                 or --disable-threading is specified, threading will be"
+	echo "                 disabled. The default is 'auto'."
 	echo " "
 	echo "   --disable-packbuf-pools, --enable-packbuf-pools"
 	echo " "
@@ -1549,7 +1549,7 @@ main()
 	debug_flag=''
 
 	# The threading flag.
-	threading_model='no'
+	threading_model='auto'
 
 	# Option variables.
 	quiet_flag=''
@@ -2252,28 +2252,28 @@ main()
 
 	# Check the threading model flag and standardize its value, if needed.
 	# NOTE: 'omp' is deprecated but still supported; 'openmp' is preferred.
-	enable_openmp='no'
-	enable_openmp_01=0
-	enable_pthreads='no'
-	enable_pthreads_01=0
 	if [ "x${threading_model}" = "xauto" ]; then
 		echo "${script_name}: determining the threading model automatically."
 	elif [ "x${threading_model}" = "xopenmp" ] ||
 	     [ "x${threading_model}" = "xomp" ]; then
 		echo "${script_name}: using OpenMP for threading."
-		enable_openmp='yes'
-		enable_openmp_01=1
 		threading_model="openmp" # Standardize the value.
 	elif [ "x${threading_model}" = "xpthreads" ] ||
 	     [ "x${threading_model}" = "xpthread" ] ||
 	     [ "x${threading_model}" = "xposix" ]; then
 		echo "${script_name}: using Pthreads for threading."
-		enable_pthreads='yes'
-		enable_pthreads_01=1
 		threading_model="pthreads" # Standardize the value.
+	elif [ "x${threading_model}" = "xdispatch" ] ||
+	     [ "x${threading_model}" = "xlibdispatch" ] ||
+	     [ "x${threading_model}" = "xgcd" ]; then
+		echo "${script_name}: using libdispatch for threading."
+		threading_model="dispatch" # Standardize the value.
+	elif [ "x${threading_model}" = "xtbb" ]; then
+		echo "${script_name}: using TBB for threading."
 	elif [ "x${threading_model}" = "xno" ] ||
 	     [ "x${threading_model}" = "xnone" ]; then
 		echo "${script_name}: threading is disabled."
+		threading_model="none" # Standardize the value.
 	else
 		echo "Unsupported threading model: ${threading_model}."
 		exit 1
@@ -2455,7 +2455,6 @@ main()
 		| sed -e "s/@cflags_preset@/${cflags_preset}/g" \
 		| sed -e "s/@ldflags_preset@/${ldflags_preset}/g" \
 		| sed -e "s/@debug_type@/${debug_type}/g" \
-		| sed -e "s/@threading_model@/${threading_model}/g" \
 		| sed -e "s/@install_libdir@/${install_libdir_esc}/g" \
 		| sed -e "s/@install_incdir@/${install_incdir_esc}/g" \
 		| sed -e "s/@enable_verbose@/${enable_verbose}/g" \
@@ -2479,8 +2478,6 @@ main()
 		| perl -pe "s/\@config_name_define\@/${config_name_define}/g" \
 		| perl -pe "s/\@config_list_defines\@/${config_list_defines}/g" \
 		| perl -pe "s/\@kernel_list_defines\@/${kernel_list_defines}/g" \
-		| sed   -e "s/@enable_openmp@/${enable_openmp_01}/g" \
-		| sed   -e "s/@enable_pthreads@/${enable_pthreads_01}/g" \
 		| sed   -e "s/@enable_packbuf_pools@/${enable_packbuf_pools_01}/g" \
 		| sed   -e "s/@int_type_size@/${int_type_size}/g" \
 		| sed   -e "s/@blas_int_type_size@/${blas_int_type_size}/g" \
@@ -2734,6 +2731,35 @@ main()
 
 		echo "${script_name}: configured to build within top-level directory of source distribution."
 	fi
+	
+	
+	# -- Configure TCI --------------------------------------------------------
+	
+	echo "Configuring TCI with --enable-thread-model=${threading_model} " \
+	                             "CC=${found_cc} CXX=${found_cxx} " \
+	                             "CFLAGS=\"${cflags_preset} -O2\" " \
+	                             "CXXFLAGS=\"${cflags_preset} -O2\" " \
+	                             "LDFLAGS=\"${ldflags_preset}\" " \
+	                             "--enable-static --disable-shared"
+	                                                  
+	case "${dist_path}" in
+		/*)
+			tci_path="${dist_path}/tci"
+			;;
+		*)
+			tci_path="../${dist_path}/tci"
+			;;
+	esac
+	
+	if [ ! -d tci ]; then mkdir tci; fi
+	cd tci
+	${tci_path}/configure --enable-thread-model=${threading_model} \
+                          CC=${found_cc} CXX=${found_cxx} \
+                          CFLAGS="${cflags_preset} -O2" \
+                          CXXFLAGS="${cflags_preset} -O2" \
+                          LDFLAGS="${ldflags_preset}" \
+                          --enable-static --disable-shared
+	cd ..
 
 
 	# Exit peacefully.

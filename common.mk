@@ -100,7 +100,6 @@ get-noopt-cflags-for   = $(strip $(CFLAGS_PRESET) \
                                  $(call load-var-for,CMISCFLAGS,$(1)) \
                                  $(call load-var-for,CLANGFLAGS,$(1)) \
                                  $(call load-var-for,CPPROCFLAGS,$(1)) \
-                                 $(CTHREADFLAGS) \
                                  $(INCLUDE_PATHS) $(VERS_DEF) \
                           )
 
@@ -111,7 +110,6 @@ get-noopt-cxxflags-for = $(strip $(CFLAGS_PRESET) \
                                  $(call load-var-for,CMISCFLAGS,$(1)) \
                                  $(call load-var-for,CXXLANGFLAGS,$(1)) \
                                  $(call load-var-for,CPPROCFLAGS,$(1)) \
-                                 $(CTHREADFLAGS) \
                                  $(INCLUDE_PATHS) $(VERS_DEF) \
                           )
 
@@ -505,51 +503,6 @@ CPPROCFLAGS := -D_POSIX_C_SOURCE=200112L
 $(foreach c, $(CONFIG_LIST_FAM), $(eval $(call append-var-for,CPPROCFLAGS,$(c))))
 
 
-# --- Threading flags ---
-
-ifeq ($(CC_VENDOR),gcc)
-ifeq ($(THREADING_MODEL),auto)
-THREADING_MODEL := openmp
-endif
-ifeq ($(THREADING_MODEL),openmp)
-CTHREADFLAGS := -fopenmp
-LDFLAGS      += -fopenmp
-endif
-ifeq ($(THREADING_MODEL),pthreads)
-CTHREADFLAGS := -pthread
-LDFLAGS      += -lpthread
-endif
-endif
-
-ifeq ($(CC_VENDOR),icc)
-ifeq ($(THREADING_MODEL),auto)
-THREADING_MODEL := openmp
-endif
-ifeq ($(THREADING_MODEL),openmp)
-CTHREADFLAGS := -fopenmp
-LDFLAGS      += -fopenmp
-endif
-ifeq ($(THREADING_MODEL),pthreads)
-CTHREADFLAGS := -pthread
-LDFLAGS      += -lpthread
-endif
-endif
-
-ifeq ($(CC_VENDOR),clang)
-ifeq ($(THREADING_MODEL),auto)
-THREADING_MODEL := pthreads
-endif
-ifeq ($(THREADING_MODEL),openmp)
-CTHREADFLAGS := -fopenmp
-LDFLAGS      += -fopenmp
-endif
-ifeq ($(THREADING_MODEL),pthreads)
-CTHREADFLAGS := -pthread
-LDFLAGS      += -lpthread
-endif
-endif
-
-
 
 #
 # --- Adjust verbosity level manually using make V=[0,1] -----------------------
@@ -778,7 +731,7 @@ REF_KER_I_PATHS := $(strip $(patsubst %, -I%, $(REF_KER_H_PATHS)))
 REF_KER_I_PATHS += -I$(DIST_PATH)/frame/include
 
 # Prefix the paths above with the base include path.
-INCLUDE_PATHS   := -I$(BASE_INC_PATH) $(REF_KER_I_PATHS)
+INCLUDE_PATHS   := -I$(BASE_INC_PATH) $(REF_KER_I_PATHS) -I$(DIST_PATH)/tci -I$(BUILD_PATH)/tci/tci
 
 # Obtain a list of header paths in the configured sandbox. Then add -I to each
 # header path.

@@ -36,9 +36,6 @@
 #ifndef BLIS_THREAD_H
 #define BLIS_THREAD_H
 
-// Include thread communicator (thrcomm_t) object definitions and prototypes.
-#include "bli_thrcomm.h"
-
 // Include thread info (thrinfo_t) object definitions and prototypes.
 #include "bli_thrinfo.h"
 
@@ -46,10 +43,6 @@
 // Note that the bli_packm_thrinfo.h must be included before the others!
 #include "bli_packm_thrinfo.h"
 #include "bli_l3_thrinfo.h"
-
-// Initialization-related prototypes.
-void bli_thread_init( void );
-void bli_thread_finalize( void );
 
 // Thread range-related prototypes.
 void bli_thread_get_range_sub
@@ -135,7 +128,7 @@ siz_t bli_thread_get_range_weighted_sub
        dim_t*     j_end_thr
      );
 
-
+// -----------------------------------------------------------------------------
 
 // Level-3 internal function type
 typedef void (*l3int_t)
@@ -150,35 +143,25 @@ typedef void (*l3int_t)
        thrinfo_t* thread
      );
 
+typedef struct
+{
+    l3int_t   func;
+    opid_t    family;
+    obj_t*    alpha;
+    obj_t*    a;
+    obj_t*    b;
+    obj_t*    beta;
+    obj_t*    c;
+    cntx_t*   cntx;
+    cntl_t*   cntl;
+} l3_thrinfo_t;
+
 // Level-3 thread decorator prototype
 void bli_l3_thread_decorator
      (
-       l3int_t func,
-       opid_t  family,
-       obj_t*  alpha,
-       obj_t*  a,
-       obj_t*  b,
-       obj_t*  beta,
-       obj_t*  c,
-       cntx_t* cntx,
-       cntl_t* cntl
+       tci_comm *comm,
+       void* thrinfo // really l3_thrinfo_t*
      );
-
-// -----------------------------------------------------------------------------
-
-// Factorization and partitioning prototypes
-typedef struct
-{
-    dim_t n;
-    dim_t sqrt_n;
-    dim_t f;
-} bli_prime_factors_t;
-
-void bli_prime_factorization(dim_t n, bli_prime_factors_t* factors);
-
-dim_t bli_next_prime_factor(bli_prime_factors_t* factors);
-
-void bli_partition_2x2(dim_t nthread, dim_t work1, dim_t work2, dim_t* nt1, dim_t* nt2);
 
 // -----------------------------------------------------------------------------
 
@@ -197,12 +180,6 @@ void  bli_thread_set_ic_nt( dim_t value );
 void  bli_thread_set_jr_nt( dim_t value );
 void  bli_thread_set_ir_nt( dim_t value );
 void  bli_thread_set_num_threads( dim_t value );
-
-// -----------------------------------------------------------------------------
-
-dim_t bli_gcd( dim_t x, dim_t y );
-dim_t bli_lcm( dim_t x, dim_t y );
-dim_t bli_ipow( dim_t base, dim_t power );
 
 #endif
 
