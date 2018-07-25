@@ -34,11 +34,15 @@
 
 #include "blis.h"
 
+thrinfo_t BLIS_PACKM_SINGLE_THREADED = { tci_single, FALSE, NULL };
+thrinfo_t BLIS_GEMM_SINGLE_THREADED = { tci_single, FALSE, NULL };
+
 // -----------------------------------------------------------------------------
 
 void bli_thread_get_range_sub
      (
-       thrinfo_t* thread,
+       dim_t      n_way,
+       dim_t      my_id,
        dim_t      n,
        dim_t      bf,
        bool_t     handle_edge_low,
@@ -46,9 +50,6 @@ void bli_thread_get_range_sub
        dim_t*     end
      )
 {
-	dim_t      n_way      = bli_thread_n_way( thread );
-	dim_t      work_id    = bli_thread_work_id( thread );
-
 	dim_t      all_start  = 0;
 	dim_t      all_end    = n;
 
@@ -114,22 +115,22 @@ void bli_thread_get_range_sub
 		dim_t hi_start = all_start + n_th_lo * size_lo;
 
 		// Compute the start and end of individual threads' ranges
-		// as a function of their work_ids and also the group to which
+		// as a function of their my_ids and also the group to which
 		// they belong (low or high).
-		if ( work_id < n_th_lo )
+		if ( my_id < n_th_lo )
 		{
-			*start = lo_start + (work_id  ) * size_lo;
-			*end   = lo_start + (work_id+1) * size_lo;
+			*start = lo_start + (my_id  ) * size_lo;
+			*end   = lo_start + (my_id+1) * size_lo;
 		}
-		else // if ( n_th_lo <= work_id )
+		else // if ( n_th_lo <= my_id )
 		{
-			*start = hi_start + (work_id-n_th_lo  ) * size_hi;
-			*end   = hi_start + (work_id-n_th_lo+1) * size_hi;
+			*start = hi_start + (my_id-n_th_lo  ) * size_hi;
+			*end   = hi_start + (my_id-n_th_lo+1) * size_hi;
 
 			// Since the edge case is being allocated to the high
 			// end of the index range, we have to advance the last
 			// thread's end.
-			if ( work_id == n_way - 1 ) *end += n_bf_left;
+			if ( my_id == n_way - 1 ) *end += n_bf_left;
 		}
 	}
 	else // if ( handle_edge_low == TRUE )
@@ -155,31 +156,32 @@ void bli_thread_get_range_sub
 		                           + n_bf_left;
 
 		// Compute the start and end of individual threads' ranges
-		// as a function of their work_ids and also the group to which
+		// as a function of their my_ids and also the group to which
 		// they belong (low or high).
-		if ( work_id < n_th_lo )
+		if ( my_id < n_th_lo )
 		{
-			*start = lo_start + (work_id  ) * size_lo;
-			*end   = lo_start + (work_id+1) * size_lo;
+			*start = lo_start + (my_id  ) * size_lo;
+			*end   = lo_start + (my_id+1) * size_lo;
 
 			// Since the edge case is being allocated to the low
 			// end of the index range, we have to advance the
 			// starts/ends accordingly.
-			if ( work_id == 0 )   *end   += n_bf_left;
+			if ( my_id == 0 )   *end   += n_bf_left;
 			else                { *start += n_bf_left;
 			                      *end   += n_bf_left; }
 		}
-		else // if ( n_th_lo <= work_id )
+		else // if ( n_th_lo <= my_id )
 		{
-			*start = hi_start + (work_id-n_th_lo  ) * size_hi;
-			*end   = hi_start + (work_id-n_th_lo+1) * size_hi;
+			*start = hi_start + (my_id-n_th_lo  ) * size_hi;
+			*end   = hi_start + (my_id-n_th_lo+1) * size_hi;
 		}
 	}
 }
 
 siz_t bli_thread_get_range_l2r
      (
-       thrinfo_t* thr,
+       dim_t      n_way,
+       dim_t      my_id,
        obj_t*     a,
        blksz_t*   bmult,
        dim_t*     start,
@@ -191,7 +193,7 @@ siz_t bli_thread_get_range_l2r
 	dim_t n  = bli_obj_width_after_trans( a );
 	dim_t bf = bli_blksz_get_def( dt, bmult );
 
-	bli_thread_get_range_sub( thr, n, bf,
+	bli_thread_get_range_sub( n_way, my_id, n, bf,
 	                          FALSE, start, end );
 
 	return m * ( *end - *start );
@@ -199,7 +201,8 @@ siz_t bli_thread_get_range_l2r
 
 siz_t bli_thread_get_range_r2l
      (
-       thrinfo_t* thr,
+       dim_t      n_way,
+       dim_t      my_id,
        obj_t*     a,
        blksz_t*   bmult,
        dim_t*     start,
@@ -211,7 +214,7 @@ siz_t bli_thread_get_range_r2l
 	dim_t n  = bli_obj_width_after_trans( a );
 	dim_t bf = bli_blksz_get_def( dt, bmult );
 
-	bli_thread_get_range_sub( thr, n, bf,
+	bli_thread_get_range_sub( n_way, my_id, n, bf,
 	                          TRUE, start, end );
 
 	return m * ( *end - *start );
@@ -219,7 +222,8 @@ siz_t bli_thread_get_range_r2l
 
 siz_t bli_thread_get_range_t2b
      (
-       thrinfo_t* thr,
+       dim_t      n_way,
+       dim_t      my_id,
        obj_t*     a,
        blksz_t*   bmult,
        dim_t*     start,
@@ -231,7 +235,7 @@ siz_t bli_thread_get_range_t2b
 	dim_t n  = bli_obj_width_after_trans( a );
 	dim_t bf = bli_blksz_get_def( dt, bmult );
 
-	bli_thread_get_range_sub( thr, m, bf,
+	bli_thread_get_range_sub( n_way, my_id, m, bf,
 	                          FALSE, start, end );
 
 	return n * ( *end - *start );
@@ -239,7 +243,8 @@ siz_t bli_thread_get_range_t2b
 
 siz_t bli_thread_get_range_b2t
      (
-       thrinfo_t* thr,
+       dim_t      n_way,
+       dim_t      my_id,
        obj_t*     a,
        blksz_t*   bmult,
        dim_t*     start,
@@ -251,7 +256,7 @@ siz_t bli_thread_get_range_b2t
 	dim_t n  = bli_obj_width_after_trans( a );
 	dim_t bf = bli_blksz_get_def( dt, bmult );
 
-	bli_thread_get_range_sub( thr, m, bf,
+	bli_thread_get_range_sub( n_way, my_id, m, bf,
 	                          TRUE, start, end );
 
 	return n * ( *end - *start );
@@ -472,7 +477,8 @@ siz_t bli_find_area_trap_l
 
 siz_t bli_thread_get_range_weighted_sub
      (
-       thrinfo_t* thread,
+       dim_t      n_way,
+       dim_t      my_id,
        doff_t     diagoff,
        uplo_t     uplo,
        dim_t      m,
@@ -483,9 +489,6 @@ siz_t bli_thread_get_range_weighted_sub
        dim_t*     j_end_thr
      )
 {
-	dim_t      n_way   = bli_thread_n_way( thread );
-	dim_t      my_id   = bli_thread_work_id( thread );
-
 	dim_t      bf_left = n % bf;
 
 	dim_t      j;
@@ -591,7 +594,7 @@ siz_t bli_thread_get_range_weighted_sub
 		// Compute the appropriate range for the rotated trapezoid.
 		area = bli_thread_get_range_weighted_sub
 		(
-		  thread, diagoff, uplo, m, n, bf,
+		  n_way, my_id, diagoff, uplo, m, n, bf,
 		  handle_edge_low,
 		  j_start_thr, j_end_thr
 		);
@@ -610,7 +613,8 @@ siz_t bli_thread_get_range_weighted_sub
 siz_t bli_thread_get_range_mdim
      (
        dir_t      direct,
-       thrinfo_t* thr,
+       dim_t      n_way,
+       dim_t      my_id,
        obj_t*     a,
        obj_t*     b,
        obj_t*     c,
@@ -653,23 +657,24 @@ siz_t bli_thread_get_range_mdim
 	if ( use_weighted )
 	{
 		if ( direct == BLIS_FWD )
-			return bli_thread_get_range_weighted_t2b( thr, x, bmult, start, end );
+			return bli_thread_get_range_weighted_t2b( n_way, my_id, x, bmult, start, end );
 		else
-			return bli_thread_get_range_weighted_b2t( thr, x, bmult, start, end );
+			return bli_thread_get_range_weighted_b2t( n_way, my_id, x, bmult, start, end );
 	}
 	else
 	{
 		if ( direct == BLIS_FWD )
-			return bli_thread_get_range_t2b( thr, x, bmult, start, end );
+			return bli_thread_get_range_t2b( n_way, my_id, x, bmult, start, end );
 		else
-			return bli_thread_get_range_b2t( thr, x, bmult, start, end );
+			return bli_thread_get_range_b2t( n_way, my_id, x, bmult, start, end );
 	}
 }
 
 siz_t bli_thread_get_range_ndim
      (
        dir_t      direct,
-       thrinfo_t* thr,
+       dim_t      n_way,
+       dim_t      my_id,
        obj_t*     a,
        obj_t*     b,
        obj_t*     c,
@@ -712,22 +717,23 @@ siz_t bli_thread_get_range_ndim
 	if ( use_weighted )
 	{
 		if ( direct == BLIS_FWD )
-			return bli_thread_get_range_weighted_l2r( thr, x, bmult, start, end );
+			return bli_thread_get_range_weighted_l2r( n_way, my_id, x, bmult, start, end );
 		else
-			return bli_thread_get_range_weighted_r2l( thr, x, bmult, start, end );
+			return bli_thread_get_range_weighted_r2l( n_way, my_id, x, bmult, start, end );
 	}
 	else
 	{
 		if ( direct == BLIS_FWD )
-			return bli_thread_get_range_l2r( thr, x, bmult, start, end );
+			return bli_thread_get_range_l2r( n_way, my_id, x, bmult, start, end );
 		else
-			return bli_thread_get_range_r2l( thr, x, bmult, start, end );
+			return bli_thread_get_range_r2l( n_way, my_id, x, bmult, start, end );
 	}
 }
 
 siz_t bli_thread_get_range_weighted_l2r
      (
-       thrinfo_t* thr,
+       dim_t      n_way,
+       dim_t      my_id,
        obj_t*     a,
        blksz_t*   bmult,
        dim_t*     start,
@@ -759,7 +765,7 @@ siz_t bli_thread_get_range_weighted_l2r
 		area =
 		bli_thread_get_range_weighted_sub
 		(
-		  thr, diagoff, uplo, m, n, bf,
+		  n_way, my_id, diagoff, uplo, m, n, bf,
 		  FALSE, start, end
 		);
 	}
@@ -767,7 +773,7 @@ siz_t bli_thread_get_range_weighted_l2r
 	{
 		area = bli_thread_get_range_l2r
 		(
-		  thr, a, bmult,
+	      n_way, my_id, a, bmult,
 		  start, end
 		);
 	}
@@ -777,7 +783,8 @@ siz_t bli_thread_get_range_weighted_l2r
 
 siz_t bli_thread_get_range_weighted_r2l
      (
-       thrinfo_t* thr,
+       dim_t      n_way,
+       dim_t      my_id,
        obj_t*     a,
        blksz_t*   bmult,
        dim_t*     start,
@@ -811,7 +818,7 @@ siz_t bli_thread_get_range_weighted_r2l
 		area =
 		bli_thread_get_range_weighted_sub
 		(
-		  thr, diagoff, uplo, m, n, bf,
+		  n_way, my_id, diagoff, uplo, m, n, bf,
 		  TRUE, start, end
 		);
 	}
@@ -819,7 +826,7 @@ siz_t bli_thread_get_range_weighted_r2l
 	{
 		area = bli_thread_get_range_r2l
 		(
-		  thr, a, bmult,
+	      n_way, my_id, a, bmult,
 		  start, end
 		);
 	}
@@ -829,7 +836,8 @@ siz_t bli_thread_get_range_weighted_r2l
 
 siz_t bli_thread_get_range_weighted_t2b
      (
-       thrinfo_t* thr,
+       dim_t      n_way,
+       dim_t      my_id,
        obj_t*     a,
        blksz_t*   bmult,
        dim_t*     start,
@@ -863,7 +871,7 @@ siz_t bli_thread_get_range_weighted_t2b
 		area =
 		bli_thread_get_range_weighted_sub
 		(
-		  thr, diagoff, uplo, m, n, bf,
+		  n_way, my_id, diagoff, uplo, m, n, bf,
 		  FALSE, start, end
 		);
 	}
@@ -871,7 +879,7 @@ siz_t bli_thread_get_range_weighted_t2b
 	{
 		area = bli_thread_get_range_t2b
 		(
-		  thr, a, bmult,
+		  n_way, my_id, a, bmult,
 		  start, end
 		);
 	}
@@ -881,7 +889,8 @@ siz_t bli_thread_get_range_weighted_t2b
 
 siz_t bli_thread_get_range_weighted_b2t
      (
-       thrinfo_t* thr,
+       dim_t      n_way,
+       dim_t      my_id,
        obj_t*     a,
        blksz_t*   bmult,
        dim_t*     start,
@@ -916,7 +925,7 @@ siz_t bli_thread_get_range_weighted_b2t
 
 		area = bli_thread_get_range_weighted_sub
 		(
-		  thr, diagoff, uplo, m, n, bf,
+		  n_way, my_id, diagoff, uplo, m, n, bf,
 		  TRUE, start, end
 		);
 	}
@@ -924,7 +933,7 @@ siz_t bli_thread_get_range_weighted_b2t
 	{
 		area = bli_thread_get_range_b2t
 		(
-		  thr, a, bmult,
+		  n_way, my_id, a, bmult,
 		  start, end
 		);
 	}
@@ -934,7 +943,20 @@ siz_t bli_thread_get_range_weighted_b2t
 
 // -----------------------------------------------------------------------------
 
-void bli_l3_thread_decorator
+typedef struct
+{
+    l3int_t   func;
+    opid_t    family;
+    obj_t*    alpha;
+    obj_t*    a;
+    obj_t*    b;
+    obj_t*    beta;
+    obj_t*    c;
+    cntx_t*   cntx;
+    cntl_t*   cntl;
+} l3_thrinfo_t;
+
+void bli_l3_thread_decorator_int
 (
   tci_comm *comm,
   void* thrinfo_ // really l3_thrinfo_t*
@@ -942,11 +964,8 @@ void bli_l3_thread_decorator
 {
     l3_thrinfo_t* thrinfo = (l3_thrinfo_t*)thrinfo_;
 
-    dim_t      id = comm->tid;
-
     obj_t      a_t, b_t, c_t;
     cntl_t*    cntl_use;
-    thrinfo_t* thread;
 
     // Alias thread-local copies of A, B, and C. These will be the objects
     // we pass into the thread functions.
@@ -958,10 +977,14 @@ void bli_l3_thread_decorator
     bli_l3_cntl_create_if( thrinfo->family, &a_t, &b_t, &c_t, thrinfo->cntl, &cntl_use );
 
     // Create the root node of the current thread's thrinfo_t structure.
-    bli_l3_thrinfo_create_root( id, comm, thrinfo->cntx, cntl_use, &thread );
+    thrinfo_t* glb_thread = bli_thrinfo_create( comm, FALSE, NULL );
+    thrinfo_t* thread = bli_thrinfo_create_for_cntl( thrinfo->cntx,
+                                                     cntl_use,
+                                                     glb_thread );
 
     #ifdef PRINT_THRINFO
     thrinfo_t** threads;
+    dim_t id = comm->tid;
 
     if ( bli_thrinfo_am_ochief( thread ) )
     {
@@ -973,7 +996,7 @@ void bli_l3_thread_decorator
     threads[ id ] = thread;
     #endif
 
-    func
+    thrinfo->func
     (
      thrinfo->alpha,
      &a_t,
@@ -999,7 +1022,37 @@ void bli_l3_thread_decorator
     bli_l3_cntl_free_if( &a_t, &b_t, &c_t, thrinfo->cntl, cntl_use, thread );
 
     // Free the current thread's thrinfo_t structure.
-    bli_l3_thrinfo_free( thread );
+    bli_thrinfo_free( glb_thread );
+}
+
+void bli_l3_thread_decorator
+(
+    l3int_t   func,
+    opid_t    family,
+    obj_t*    alpha,
+    obj_t*    a,
+    obj_t*    b,
+    obj_t*    beta,
+    obj_t*    c,
+    cntx_t*   cntx,
+    cntl_t*   cntl
+)
+{
+    l3_thrinfo_t info;
+
+    info.func = func;
+    info.family = family;
+    info.alpha = alpha;
+    info.a = a;
+    info.b = b;
+    info.beta = beta;
+    info.c = c;
+    info.cntx = cntx;
+    info.cntl = cntl;
+
+    dim_t n_threads = bli_cntx_get_num_threads( cntx );
+
+    tci_parallelize( bli_l3_thread_decorator_int, &info, n_threads, 0 );
 }
 
 // -----------------------------------------------------------------------------

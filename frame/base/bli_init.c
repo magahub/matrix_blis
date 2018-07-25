@@ -78,15 +78,15 @@ void bli_init_apis( void )
 	bli_error_init();
 	bli_gks_init();
 	bli_ind_init();
-	bli_thread_init();
 	bli_memsys_init();
+	bli_l3_ind_init();
 }
 
 void bli_finalize_apis( void )
 {
 	// Finalize various sub-APIs.
+    bli_l3_ind_finalize();
 	bli_memsys_finalize();
-	bli_thread_finalize();
 	bli_gks_finalize();
 	bli_ind_finalize();
 	bli_error_finalize();

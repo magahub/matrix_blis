@@ -35,8 +35,53 @@
 #include "blis.h"
 #include "blix.h"
 
-// This code is enabled only when multithreading is enabled via OpenMP.
-#ifdef BLIS_ENABLE_OPENMP
+typedef struct
+{
+    gemmint_t func;
+    opid_t family;
+    obj_t* a;
+    obj_t* b;
+    obj_t* c;
+    cntx_t* cntx;
+    cntl_t* cntl;
+} l3_thrinfo_t;
+
+void blx_gemm_thread_int( tci_comm* comm, void* thrinfo_ )
+{
+    l3_thrinfo_t* thrinfo = (l3_thrinfo_t*)thrinfo_;
+
+    dim_t      id = comm->tid;
+
+    cntl_t*    cntl_use;
+    thrinfo_t* thread;
+
+    // Create a default control tree for the operation, if needed.
+    blx_l3_cntl_create_if( thrinfo->family, thrinfo->a, thrinfo->b,
+                           thrinfo->c, thrinfo->cntl, &cntl_use );
+
+    // Create the root node of the current thread's thrinfo_t structure.
+    thrinfo_t* glb_thread = bli_thrinfo_create( comm, FALSE, NULL );
+    thrinfo_t* thread = bli_thrinfo_create_for_cntl( thrinfo->cntx,
+                                                     thrinfo->cntl,
+                                                     glb_thread );
+
+    thrinfo->func
+    (
+      thrinfo->a,
+      thrinfo->b,
+      thrinfo->c,
+      thrinfo->cntx,
+      cntl_use,
+      thread
+    );
+
+    // Free the control tree, if one was created locally.
+    blx_l3_cntl_free_if( thrinfo->a, thrinfo->b, thrinfo->c, thrinfo->cntl,
+                         cntl_use, thread );
+
+    // Free the current thread's thrinfo_t structure.
+    bli_thrinfo_free( glb_thread );
+}
 
 void blx_gemm_thread
      (
@@ -49,99 +94,17 @@ void blx_gemm_thread
        cntl_t*   cntl
      )
 {
-	// Query the total number of threads from the context.
-	dim_t       n_threads = bli_cntx_get_num_threads( cntx );
+    l3_thrinfo_t info;
 
-	// Allcoate a global communicator for the root thrinfo_t structures.
-	thrcomm_t*  gl_comm   = bli_thrcomm_create( n_threads );
+    info.func = func;
+    info.family = family;
+    info.a = a;
+    info.b = b;
+    info.c = c;
+    info.cntx = cntx;
+    info.cntl = cntl;
 
-	_Pragma( "omp parallel num_threads(n_threads)" )
-	{
-		dim_t      id = omp_get_thread_num();
+    dim_t n_threads = bli_cntx_get_num_threads( cntx );
 
-		cntl_t*    cntl_use;
-		thrinfo_t* thread;
-
-		// Create a default control tree for the operation, if needed.
-		blx_l3_cntl_create_if( family, a, b, c, cntl, &cntl_use );
-
-		// Create the root node of the current thread's thrinfo_t structure.
-		bli_l3_thrinfo_create_root( id, gl_comm, cntx, cntl_use, &thread );
-
-		func
-		(
-		  a,
-		  b,
-		  c,
-		  cntx,
-		  cntl_use,
-		  thread
-		);
-
-		// Free the control tree, if one was created locally.
-		blx_l3_cntl_free_if( a, b, c, cntl, cntl_use, thread );
-
-		// Free the current thread's thrinfo_t structure.
-		bli_l3_thrinfo_free( thread );
-	}
-
-	// We shouldn't free the global communicator since it was already freed
-	// by the global communicator's chief thread in bli_l3_thrinfo_free()
-	// (called above).
+    tci_parallelize( blx_gemm_thread_int, &info, n_threads, 0 );
 }
-
-#endif
-
-// This code is enabled only when multithreading is disabled.
-#ifndef BLIS_ENABLE_MULTITHREADING
-
-void blx_gemm_thread
-     (
-       gemmint_t func,
-       opid_t    family,
-       obj_t*    a,
-       obj_t*    b,
-       obj_t*    c,
-       cntx_t*   cntx,
-       cntl_t*   cntl
-     )
-{
-	// For sequential execution, we use only one thread.
-	dim_t      n_threads = 1;
-	dim_t      id        = 0;
-
-	// Allcoate a global communicator for the root thrinfo_t structures.
-	thrcomm_t* gl_comm   = bli_thrcomm_create( n_threads );
-
-	cntl_t*    cntl_use;
-	thrinfo_t* thread;
-
-	// Create a default control tree for the operation, if needed.
-	blx_l3_cntl_create_if( family, a, b, c, cntl, &cntl_use );
-
-	// Create the root node of the thread's thrinfo_t structure.
-	bli_l3_thrinfo_create_root( id, gl_comm, cntx, cntl_use, &thread );
-
-	func
-	(
-	  a,
-	  b,
-	  c,
-	  cntx,
-	  cntl_use,
-	  thread
-	);
-
-	// Free the control tree, if one was created locally.
-	blx_l3_cntl_free_if( a, b, c, cntl, cntl_use, thread );
-
-	// Free the current thread's thrinfo_t structure.
-	bli_l3_thrinfo_free( thread );
-
-	// We shouldn't free the global communicator since it was already freed
-	// by the global communicator's chief thread in bli_l3_thrinfo_free()
-	// (called above).
-}
-
-#endif
-

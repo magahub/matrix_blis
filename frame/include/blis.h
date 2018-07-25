@@ -65,6 +65,18 @@ extern "C" {
 #include "bli_macro_defs.h"
 
 
+// -- Prerequisites for threading definitions
+
+#include "bli_init.h"
+#include "bli_const.h"
+#include "bli_obj.h"
+#include "bli_obj_scalar.h"
+#include "bli_blksz.h"
+#include "bli_func.h"
+#include "bli_mbool.h"
+#include "bli_cntx.h"
+
+
 // -- Threading definitions --
 
 #include "bli_thread.h"
@@ -90,14 +102,6 @@ extern "C" {
 
 // -- Base operation prototypes --
 
-#include "bli_init.h"
-#include "bli_const.h"
-#include "bli_obj.h"
-#include "bli_obj_scalar.h"
-#include "bli_blksz.h"
-#include "bli_func.h"
-#include "bli_mbool.h"
-#include "bli_cntx.h"
 #include "bli_gks.h"
 #include "bli_ind.h"
 #include "bli_membrk.h"

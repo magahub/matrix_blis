@@ -34,6 +34,70 @@
 
 #include "blis.h"
 
+typedef struct
+{
+    obj_t* a;
+    obj_t* b;
+    obj_t* c;
+    cntx_t* cntx;
+    cntl_t* cntl;
+    thrinfo_t* thread;
+} gemm_params;
+
+static void bli_gemm_blk_var2_thread( tci_comm* comm,
+                                      uint64_t gid,
+                                      uint64_t unused,
+                                      void* param_ )
+{
+    gemm_params* param = param_;
+
+    obj_t b1, c1;
+
+    dir_t direct;
+
+    dim_t i;
+    dim_t b_alg;
+    dim_t my_start, my_end;
+
+    // Determine the direction in which to partition (forwards or backwards).
+    direct = bli_l3_direct( param->a, param->b, param->c, param->cntl );
+
+    // Determine the current thread's subpartition range.
+    bli_thread_get_range_ndim
+    (
+      direct, comm->ngang, gid, param->a, param->b, param->c, param->cntl,
+      param->cntx, &my_start, &my_end
+    );
+
+    // Partition along the m dimension.
+    for ( i = my_start; i < my_end; i += b_alg )
+    {
+        // Determine the current algorithmic blocksize.
+        b_alg = bli_determine_blocksize( direct, i, my_end, param->b,
+                                         bli_cntl_bszid( param->cntl ),
+                                         param->cntx );
+
+        // Acquire partitions for B1 and C1.
+        bli_acquire_mpart_ndim( direct, BLIS_SUBPART1,
+                                i, b_alg, param->b, &b1 );
+        bli_acquire_mpart_ndim( direct, BLIS_SUBPART1,
+                                i, b_alg, param->c, &c1 );
+
+        // Perform gemm subproblem.
+        bli_gemm_int
+        (
+          &BLIS_ONE,
+          param->a,
+          &b1,
+          &BLIS_ONE,
+          &c1,
+          param->cntx,
+          bli_cntl_sub_node( param->cntl ),
+          bli_thrinfo_sub_node( param->thread )
+        );
+    }
+}
+
 void bli_gemm_blk_var2
      (
        obj_t*  a,
@@ -44,52 +108,24 @@ void bli_gemm_blk_var2
        thrinfo_t* thread
      )
 {
-	obj_t b1, c1;
+    // Prune any zero region that exists along the partitioning dimension.
+    bli_l3_prune_unref_mparts_n( a, b, c, cntl );
 
-	dir_t direct;
+    gemm_params param;
 
-	dim_t i;
-	dim_t b_alg;
-	dim_t my_start, my_end;
+    param.a = a;
+    param.b = b;
+    param.c = c;
+    param.cntx = cntx;
+    param.cntl = cntl;
+    param.thread = thread;
 
-	// Determine the direction in which to partition (forwards or backwards).
-	direct = bli_l3_direct( a, b, c, cntl );
+    tci_comm* comm = thread->comm;
+    tci_range range = {comm->ngang, 1};
 
-	// Prune any zero region that exists along the partitioning dimension.
-	bli_l3_prune_unref_mparts_n( a, b, c, cntl );
-
-	// Determine the current thread's subpartition range.
-	bli_thread_get_range_ndim
-	(
-	  direct, thread, a, b, c, cntl, cntx,
-	  &my_start, &my_end
-	);
-
-	// Partition along the n dimension.
-	for ( i = my_start; i < my_end; i += b_alg )
-	{
-		// Determine the current algorithmic blocksize.
-		b_alg = bli_determine_blocksize( direct, i, my_end, b,
-		                                 bli_cntl_bszid( cntl ), cntx );
-
-		// Acquire partitions for B1 and C1.
-		bli_acquire_mpart_ndim( direct, BLIS_SUBPART1,
-		                        i, b_alg, b, &b1 );
-		bli_acquire_mpart_ndim( direct, BLIS_SUBPART1,
-		                        i, b_alg, c, &c1 );
-
-		// Perform gemm subproblem.
-		bli_gemm_int
-		(
-		  &BLIS_ONE,
-		  a,
-		  &b1,
-		  &BLIS_ONE,
-		  &c1,
-		  cntx,
-		  bli_cntl_sub_node( cntl ),
-		  bli_thrinfo_sub_node( thread )
-		);
-	}
+    tci_comm_distribute_over_gangs( comm,
+                                    range,
+                                    bli_gemm_blk_var2_thread,
+                                    &param );
 }
 

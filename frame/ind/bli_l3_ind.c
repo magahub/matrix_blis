@@ -202,13 +202,22 @@ void bli_l3_ind_oper_set_enable_all( opid_t oper, num_t dt, bool_t status )
 
 // -----------------------------------------------------------------------------
 
-#ifdef BLIS_ENABLE_PTHREADS
-static pthread_mutex_t l3_ind_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
+tci_mutex l3_ind_mutex;
+
+void bli_l3_ind_init()
+{
+    tci_mutex_init( &l3_ind_mutex );
+}
+
+void bli_l3_ind_finalize()
+{
+}
 
 void bli_l3_ind_oper_set_enable( opid_t oper, ind_t method, num_t dt, bool_t status )
 {
 	num_t idt;
+
+	bli_init_once();
 
 	if ( !bli_is_complex( dt ) ) return;
 	if ( !bli_opid_is_level3( oper ) ) return;
@@ -218,12 +227,7 @@ void bli_l3_ind_oper_set_enable( opid_t oper, ind_t method, num_t dt, bool_t sta
 
 	idt = bli_ind_map_cdt_to_index( dt );
 
-#ifdef BLIS_ENABLE_OPENMP
-	_Pragma( "omp critical (l3_ind)" )
-#endif
-#ifdef BLIS_ENABLE_PTHREADS
-	pthread_mutex_lock( &l3_ind_mutex );
-#endif
+	tci_mutex_lock( &l3_ind_mutex );
 
 	// BEGIN CRITICAL SECTION
 	{
@@ -231,9 +235,7 @@ void bli_l3_ind_oper_set_enable( opid_t oper, ind_t method, num_t dt, bool_t sta
 	}
 	// END CRITICAL SECTION
 
-#ifdef BLIS_ENABLE_PTHREADS
-	pthread_mutex_unlock( &l3_ind_mutex );
-#endif
+	tci_mutex_unlock( &l3_ind_mutex );
 }
 
 bool_t bli_l3_ind_oper_get_enable( opid_t oper, ind_t method, num_t dt )

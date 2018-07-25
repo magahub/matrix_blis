@@ -76,7 +76,11 @@ void blx_l3_packm
 	pack_buf_type = bli_cntl_packm_params_pack_buf_type( cntl );
 
 	// Query the address of the mem_t entry within the control tree node.
-	cntl_mem_p = bli_cntl_pack_mem( cntl );
+    mem_t cntl_mem;
+    //cntl_mem_p = bli_cntl_pack_mem( cntl );
+    cntl_mem_p = &cntl_mem;
+
+    bli_mem_clear( cntl_mem_p );
 
 	// Check the mem_t field in the control tree. If it is unallocated, then
 	// we need to acquire a block from the memory broker and broadcast it to
@@ -178,5 +182,16 @@ void blx_l3_packm
 
 	// Barrier so that packing is done before computation.
 	bli_thread_obarrier( thread );
+
+    // In order to support threading with TBB (or another task-based model),
+    // we have to free the memory allocated above each time through (i.e. no
+    // caching is possible without a lot of extra work). Note that we also
+    // use a local mem_t instead of writing to the control tree because it
+    // has not been copied for each spawned task.
+    if ( bli_thread_am_ochief( thread ) )
+    if ( bli_mem_is_alloc( cntl_mem_p ) )
+    {
+        bli_membrk_release( cntl_mem_p );
+    }
 }
 

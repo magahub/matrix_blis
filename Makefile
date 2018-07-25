@@ -573,12 +573,14 @@ libblis: check-env $(MK_LIBS)
 
 $(LIBBLIS_A_PATH): $(MK_BLIS_OBJS) tci
 ifeq ($(ENABLE_VERBOSE),yes)
-	$(AR) $(ARFLAGS) $@ $?
+	$(AR) $(ARFLAGS) $@ $(MK_BLIS_OBJS)
 	$(RANLIB) $@
+	cp -f ./tci/lib/.libs/libtci.a $(BASE_LIB_PATH)/libtci.a
 else
 	@echo "Archiving $@"
-	@$(AR) $(ARFLAGS) $@ $?
+	@$(AR) $(ARFLAGS) $@ $(MK_BLIS_OBJS)
 	@$(RANLIB) $@
+	@cp -f ./tci/lib/.libs/libtci.a $(BASE_LIB_PATH)/libtci.a
 endif
 
 
@@ -586,10 +588,10 @@ endif
 
 $(LIBBLIS_SO_PATH): $(MK_BLIS_OBJS) tci
 ifeq ($(ENABLE_VERBOSE),yes)
-	$(LINKER) $(SOFLAGS) $(LDFLAGS) -o $@ $?
+	$(LINKER) $(SOFLAGS) $(LDFLAGS) -o $@ $(MK_BLIS_OBJS) ./tci/lib/.libs/libtci.a
 else 
 	@echo "Dynamically linking $@"
-	@$(LINKER) $(SOFLAGS) $(LDFLAGS) -o $@ $?
+	@$(LINKER) $(SOFLAGS) $(LDFLAGS) -o $@ $(MK_BLIS_OBJS) ./tci/lib/.libs/libtci.a
 endif
 
 
@@ -636,10 +638,10 @@ endif
 define make-blat-rule
 $(BASE_OBJ_BLASTEST_PATH)/$(1).x: $(BASE_OBJ_BLASTEST_PATH)/$(1).o $(BLASTEST_F2C_LIB) $(LIBBLIS_LINK)
 ifeq ($(ENABLE_VERBOSE),yes)
-	$(LINKER) $(BASE_OBJ_BLASTEST_PATH)/$(1).o $(BLASTEST_F2C_LIB) $(LIBBLIS_LINK) $(LDFLAGS) -o $$@
+	$(LINKER) $(BASE_OBJ_BLASTEST_PATH)/$(1).o $(BLASTEST_F2C_LIB) $(LIBBLIS_LINK) $(LIBTCI_LINK) $(LDFLAGS) -o $$@
 else
-	@echo "Linking $$(@F) against '$(notdir $(BLASTEST_F2C_LIB)) $(LIBBLIS_LINK) $(LDFLAGS)'"
-	@$(LINKER) $(BASE_OBJ_BLASTEST_PATH)/$(1).o $(BLASTEST_F2C_LIB) $(LIBBLIS_LINK) $(LDFLAGS) -o $$@
+	@echo "Linking $$(@F) against '$(notdir $(BLASTEST_F2C_LIB)) $(LIBBLIS_LINK) $(LIBTCI_LINK) $(LDFLAGS)'"
+	@$(LINKER) $(BASE_OBJ_BLASTEST_PATH)/$(1).o $(BLASTEST_F2C_LIB) $(LIBBLIS_LINK) $(LIBTCI_LINK) $(LDFLAGS) -o $$@
 endif
 endef
 
@@ -707,10 +709,10 @@ endif
 # Testsuite binary rule.
 $(TESTSUITE_BIN): $(MK_TESTSUITE_OBJS) $(LIBBLIS_LINK)
 ifeq ($(ENABLE_VERBOSE),yes)
-	$(LINKER) $(MK_TESTSUITE_OBJS) $(LIBBLIS_LINK) $(LDFLAGS) -o $@
+	$(LINKER) $(MK_TESTSUITE_OBJS) $(LIBBLIS_LINK) $(LIBTCI_LINK) $(LDFLAGS) -o $@
 else
-	@echo "Linking $@ against '$(LIBBLIS_LINK) $(LDFLAGS)'"
-	@$(LINKER) $(MK_TESTSUITE_OBJS) $(LIBBLIS_LINK) $(LDFLAGS) -o $@
+	@echo "Linking $@ against '$(LIBBLIS_LINK) $(LIBTCI_LINK) $(LDFLAGS)'"
+	@$(LINKER) $(MK_TESTSUITE_OBJS) $(LIBBLIS_LINK) $(LIBTCI_LINK) $(LDFLAGS) -o $@
 endif
 
 # A rule to run the testsuite using the normal input.* files.

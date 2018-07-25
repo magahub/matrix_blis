@@ -391,6 +391,7 @@ if test x"$thread_model" = xopenmp; then
     USE_OPENMP_THREADS=1
     CFLAGS="$CFLAGS $OPENMP_CFLAGS"
     CXXFLAGS="$CXXFLAGS $OPENMP_CFLAGS"
+    LDFLAGS="$LDFLAGS $OPENMP_CFLAGS"
 elif test x"$thread_model" = xomptask; then
     if test x"$have_openmp" = xno; then
         AC_MSG_ERROR([omptask requested but not available])
@@ -398,6 +399,7 @@ elif test x"$thread_model" = xomptask; then
     USE_OMPTASK_THREADS=1
     CFLAGS="$CFLAGS $OPENMP_CFLAGS"
     CXXFLAGS="$CXXFLAGS $OPENMP_CFLAGS"
+    LDFLAGS="$LDFLAGS $OPENMP_CFLAGS"
 elif test x"$thread_model" = xpthread || \
      test x"$thread_model" = xpthreads; then
     if test x"$have_pthreads" = xno; then

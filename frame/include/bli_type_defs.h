@@ -899,7 +899,7 @@ typedef struct
 
 // -- Mutex object type --
 
-#include "bli_mutex.h"
+#include "tci.h"
 #include "bli_malloc.h"
 
 // -- Memory broker object type --
@@ -907,7 +907,7 @@ typedef struct
 typedef struct membrk_s
 {
 	pool_t    pools[3];
-	mtx_t     mutex;
+	tci_mutex mutex;
 
 	malloc_ft malloc_fp;
 	free_ft   free_fp;

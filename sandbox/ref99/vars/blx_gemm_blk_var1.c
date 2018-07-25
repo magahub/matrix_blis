@@ -35,6 +35,57 @@
 #include "blis.h"
 #include "blix.h"
 
+typedef struct
+{
+    obj_t* a;
+    obj_t* b;
+    obj_t* c;
+    cntx_t* cntx;
+    cntl_t* cntl;
+    thrinfo_t* thread;
+} gemm_params;
+
+void blx_gemm_blk_var1_thread( tci_comm* comm,
+                               uint64_t gid,
+                               uint64_t unused,
+                               void* param_ )
+{
+    gemm_params* param = param_;
+
+    obj_t a1, c1;
+    dim_t i;
+    dim_t b_alg;
+    dim_t my_start, my_end;
+
+    // Determine the current thread's subpartition range.
+    bli_thread_get_range_mdim
+    (
+      BLIS_FWD, comm->ngang, gid, param->a, param->b, param->c, param->cntl,
+      param->cntx, &my_start, &my_end
+    );
+
+    // Partition along the m dimension.
+    for ( i = my_start; i < my_end; i += b_alg )
+    {
+        // Determine the current algorithmic blocksize.
+        b_alg = blx_determine_blocksize_f( i, my_end, param->c,
+                                           bli_cntl_bszid( param->cntl ),
+                                           param->cntx );
+
+        // Acquire partitions for A1 and C1.
+        bli_acquire_mpart_mdim( BLIS_FWD, BLIS_SUBPART1, i, b_alg, param->a, &a1 );
+        bli_acquire_mpart_mdim( BLIS_FWD, BLIS_SUBPART1, i, b_alg, param->c, &c1 );
+
+        // Perform gemm subproblem.
+        blx_gemm_int
+        (
+          &a1, param->b, &c1, param->cntx,
+          bli_cntl_sub_node( param->cntl ),
+          bli_thrinfo_sub_node( param->thread )
+        );
+    }
+}
+
 void blx_gemm_blk_var1
      (
        obj_t*  a,
@@ -45,36 +96,21 @@ void blx_gemm_blk_var1
        thrinfo_t* thread
      )
 {
-	obj_t a1, c1;
-	dim_t i;
-	dim_t b_alg;
-	dim_t my_start, my_end;
+    gemm_params param;
 
-	// Determine the current thread's subpartition range.
-	bli_thread_get_range_mdim
-	(
-	  BLIS_FWD, thread, a, b, c, cntl, cntx,
-	  &my_start, &my_end
-	);
+    param.a = a;
+    param.b = b;
+    param.c = c;
+    param.cntx = cntx;
+    param.cntl = cntl;
+    param.thread = thread;
 
-	// Partition along the m dimension.
-	for ( i = my_start; i < my_end; i += b_alg )
-	{
-		// Determine the current algorithmic blocksize.
-		b_alg = blx_determine_blocksize_f( i, my_end, c,
-		                                   bli_cntl_bszid( cntl ), cntx );
+    tci_comm* comm = thread->comm;
+    tci_range range = {comm->ngang, 1};
 
-		// Acquire partitions for A1 and C1.
-		bli_acquire_mpart_mdim( BLIS_FWD, BLIS_SUBPART1, i, b_alg, a, &a1 );
-		bli_acquire_mpart_mdim( BLIS_FWD, BLIS_SUBPART1, i, b_alg, c, &c1 );
-
-		// Perform gemm subproblem.
-		blx_gemm_int
-		(
-		  &a1, b, &c1, cntx,
-		  bli_cntl_sub_node( cntl ),
-		  bli_thrinfo_sub_node( thread )
-		);
-	}
+    tci_comm_distribute_over_gangs( comm,
+                                    range,
+                                    blx_gemm_blk_var1_thread,
+                                    &param );
 }
 

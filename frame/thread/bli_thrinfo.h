@@ -85,7 +85,7 @@ static dim_t bli_thread_work_id( thrinfo_t* t )
 
 static tci_comm* bli_thrinfo_ocomm( thrinfo_t* t )
 {
-	return &(t->comm);
+	return t->comm;
 }
 
 static bool_t bli_thrinfo_needs_free_comm( thrinfo_t* t )
@@ -137,6 +137,11 @@ thrinfo_t* bli_thrinfo_create
        thrinfo_t* sub_node
      );
 
+void bli_thrinfo_free
+     (
+       thrinfo_t* thread
+     );
+
 void bli_thrinfo_init
      (
        thrinfo_t* thread,
@@ -155,7 +160,6 @@ void bli_thrinfo_init_single
 thrinfo_t* bli_thrinfo_create_for_cntl
      (
        cntx_t*    cntx,
-       cntl_t*    cntl_par,
        cntl_t*    cntl_chl,
        thrinfo_t* thread_par
      );

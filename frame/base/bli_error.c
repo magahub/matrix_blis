@@ -34,9 +34,12 @@
 
 #include "blis.h"
 
+static tci_mutex err_mutex;
+
 void bli_error_init( void )
 {
 	bli_error_init_msgs();
+	tci_mutex_init( &err_mutex );
 }
 
 void bli_error_finalize( void )
@@ -197,10 +200,6 @@ void bli_abort( void )
 
 // -----------------------------------------------------------------------------
 
-#ifdef BLIS_ENABLE_PTHREADS
-static pthread_mutex_t err_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
-
 // Current error checking level.
 static errlev_t bli_err_chk_level = BLIS_FULL_ERROR_CHECKING;
 
@@ -211,17 +210,14 @@ errlev_t bli_error_checking_level( void )
 
 void bli_error_checking_level_set( errlev_t new_level )
 {
+    bli_init_once();
+
 	err_t e_val;
 
 	e_val = bli_check_valid_error_level( new_level );
 	bli_check_error_code( e_val );
 
-#ifdef BLIS_ENABLE_OPENMP
-	_Pragma( "omp critical (err)" )
-#endif
-#ifdef BLIS_ENABLE_PTHREADS
-	pthread_mutex_lock( &err_mutex );
-#endif
+	tci_mutex_lock( &err_mutex );
 
 	// BEGIN CRITICAL SECTION
 	{
@@ -229,9 +225,7 @@ void bli_error_checking_level_set( errlev_t new_level )
 	}
 	// END CRITICAL SECTION
 
-#ifdef BLIS_ENABLE_PTHREADS
-	pthread_mutex_unlock( &err_mutex );
-#endif
+    tci_mutex_unlock( &err_mutex );
 }
 
 bool_t bli_error_checking_is_enabled( void )

@@ -43,7 +43,6 @@ extern obj_t BLIS_ZERO;
 extern obj_t BLIS_MINUS_ONE;
 extern obj_t BLIS_MINUS_TWO;
 
-extern thrcomm_t BLIS_SINGLE_COMM;
 extern thrinfo_t BLIS_PACKM_SINGLE_THREADED;
 extern thrinfo_t BLIS_GEMM_SINGLE_THREADED;
 

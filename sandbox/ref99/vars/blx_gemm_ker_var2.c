@@ -51,7 +51,8 @@ typedef void (*gemm_fp)
        void*   beta,
        void*   c, inc_t rs_c, inc_t cs_c,
        cntx_t* cntx,
-       thrinfo_t* thread
+       dim_t ir_num_threads, dim_t ir_thread_id, \
+       dim_t jr_num_threads, dim_t jr_thread_id \
      );
 
 // Function pointer array for datatype-specific functions.
@@ -63,6 +64,52 @@ static gemm_fp ftypes[BLIS_NUM_FP_TYPES] =
     PASTECH2(blx_,z,gemm_ker_var2)
 };
 
+typedef struct
+{
+    gemm_fp f;
+    pack_t  schema_a;
+    pack_t  schema_b;
+    dim_t   m;
+    dim_t   n;
+    dim_t   k;
+    void*   alpha;
+    void*   a; inc_t cs_a; inc_t is_a;
+               dim_t pd_a; inc_t ps_a;
+    void*   b; inc_t rs_b; inc_t is_b;
+               dim_t pd_b; inc_t ps_b;
+    void*   beta;
+    void*   c; inc_t rs_c; inc_t cs_c;
+    cntx_t* cntx;
+    dim_t ir_num_threads;
+    dim_t jr_num_threads;
+} gemm_params;
+
+static void blx_gemm_ker_var2_thread( tci_comm* comm,
+                                      uint64_t tid,
+                                      uint64_t unused,
+                                      void* param_ )
+{
+    gemm_params* param = param_;
+
+    dim_t ir_thread_id = tid % param->ir_num_threads;
+    dim_t jr_thread_id = tid / param->ir_num_threads;
+
+    param->f( param->schema_a,
+              param->schema_b,
+              param->m,
+              param->n,
+              param->k,
+              param->alpha,
+              param->a, param->cs_a, param->is_a,
+                        param->pd_a, param->ps_a,
+              param->b, param->rs_b, param->is_b,
+                        param->pd_b, param->ps_b,
+              param->beta,
+              param->c, param->rs_c, param->cs_c,
+              param->cntx,
+              param->ir_num_threads, ir_thread_id,
+              param->jr_num_threads, jr_thread_id );
+}
 
 void blx_gemm_ker_var2
      (
@@ -76,36 +123,38 @@ void blx_gemm_ker_var2
 {
 	num_t     dt_exec   = bli_obj_exec_dt( c );
 
-	pack_t    schema_a  = bli_obj_pack_schema( a );
-	pack_t    schema_b  = bli_obj_pack_schema( b );
+	gemm_params param;
 
-	dim_t     m         = bli_obj_length( c );
-	dim_t     n         = bli_obj_width( c );
-	dim_t     k         = bli_obj_width( a );
+	param.schema_a  = bli_obj_pack_schema( a );
+	param.schema_b  = bli_obj_pack_schema( b );
 
-	void*     buf_a     = bli_obj_buffer_at_off( a );
-	inc_t     cs_a      = bli_obj_col_stride( a );
-	inc_t     is_a      = bli_obj_imag_stride( a );
-	dim_t     pd_a      = bli_obj_panel_dim( a );
-	inc_t     ps_a      = bli_obj_panel_stride( a );
+	param.m         = bli_obj_length( c );
+	param.n         = bli_obj_width( c );
+	param.k         = bli_obj_width( a );
 
-	void*     buf_b     = bli_obj_buffer_at_off( b );
-	inc_t     rs_b      = bli_obj_row_stride( b );
-	inc_t     is_b      = bli_obj_imag_stride( b );
-	dim_t     pd_b      = bli_obj_panel_dim( b );
-	inc_t     ps_b      = bli_obj_panel_stride( b );
+	param.a         = bli_obj_buffer_at_off( a );
+	param.cs_a      = bli_obj_col_stride( a );
+	param.is_a      = bli_obj_imag_stride( a );
+	param.pd_a      = bli_obj_panel_dim( a );
+	param.ps_a      = bli_obj_panel_stride( a );
 
-	void*     buf_c     = bli_obj_buffer_at_off( c );
-	inc_t     rs_c      = bli_obj_row_stride( c );
-	inc_t     cs_c      = bli_obj_col_stride( c );
+	param.b         = bli_obj_buffer_at_off( b );
+	param.rs_b      = bli_obj_row_stride( b );
+	param.is_b      = bli_obj_imag_stride( b );
+	param.pd_b      = bli_obj_panel_dim( b );
+	param.ps_b      = bli_obj_panel_stride( b );
+
+	param.c         = bli_obj_buffer_at_off( c );
+	param.rs_c      = bli_obj_row_stride( c );
+	param.cs_c      = bli_obj_col_stride( c );
+
+	param.cntx      = cntx;
+
+    param.ir_num_threads = thread->sub_node->comm->nthread;
+    param.jr_num_threads = thread->sub_node->comm->ngang;
 
 	obj_t     scalar_a;
 	obj_t     scalar_b;
-
-	void*     buf_alpha;
-	void*     buf_beta;
-
-	gemm_fp   f;
 
 	// Detach and multiply the scalars attached to A and B.
 	bli_obj_scalar_detach( a, &scalar_a );
@@ -114,28 +163,21 @@ void blx_gemm_ker_var2
 
 	// Grab the addresses of the internal scalar buffers for the scalar
 	// merged above and the scalar attached to C.
-	buf_alpha = bli_obj_internal_scalar_buffer( &scalar_b );
-	buf_beta  = bli_obj_internal_scalar_buffer( c );
+	param.alpha = bli_obj_internal_scalar_buffer( &scalar_b );
+	param.beta  = bli_obj_internal_scalar_buffer( c );
 
 	// Index into the type combination array to extract the correct
 	// function pointer.
-	f = ftypes[dt_exec];
+	param.f = ftypes[dt_exec];
+
+	tci_comm* comm = thread->comm;
+	tci_range range = {comm->nthread, 1};
 
 	// Invoke the function.
-	f( schema_a,
-	   schema_b,
-	   m,
-	   n,
-	   k,
-	   buf_alpha,
-	   buf_a, cs_a, is_a,
-	          pd_a, ps_a,
-	   buf_b, rs_b, is_b,
-	          pd_b, ps_b,
-	   buf_beta,
-	   buf_c, rs_c, cs_c,
-	   cntx,
-	   thread );
+    tci_comm_distribute_over_threads( comm,
+                                      range,
+                                      blx_gemm_ker_var2_thread,
+                                      &param );
 }
 
 
@@ -157,7 +199,8 @@ void PASTECH2(blx_,ch,varname) \
        void*   beta, \
        void*   c, inc_t rs_c, inc_t cs_c, \
        cntx_t* cntx, \
-       thrinfo_t* thread  \
+       dim_t ir_num_threads, dim_t ir_thread_id, \
+       dim_t jr_num_threads, dim_t jr_thread_id \
      ) \
 { \
 	const num_t     dt         = PASTEMAC(ch,type); \

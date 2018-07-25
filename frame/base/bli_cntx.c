@@ -884,9 +884,7 @@ void bli_cntx_set_thrloop_from_env
        cntx_t* cntx
      )
 {
-	dim_t jc, pc, ic, jr, ir;
-
-#ifdef BLIS_ENABLE_MULTITHREADING
+	unsigned jc, pc, ic, jr, ir;
 
 	int nthread = bli_thread_get_env( "BLIS_NUM_THREADS", -1 );
 
@@ -895,8 +893,9 @@ void bli_cntx_set_thrloop_from_env
 
 	if ( nthread < 1 ) nthread = 1;
 
-    bli_partition_2x2( nthread, m*BLIS_DEFAULT_M_THREAD_RATIO,
-                                n*BLIS_DEFAULT_N_THREAD_RATIO, &ic, &jc );
+    tci_partition_2x2( nthread, m*BLIS_DEFAULT_M_THREAD_RATIO, nthread,
+                                n*BLIS_DEFAULT_N_THREAD_RATIO, nthread,
+                       &ic, &jc );
 
     for ( ir = BLIS_DEFAULT_MR_THREAD_MAX ; ir > 1 ; ir-- )
     {
@@ -930,16 +929,6 @@ void bli_cntx_set_thrloop_from_env
         jr = (jr_env == -1 ? 1 : jr_env);
         ir = (ir_env == -1 ? 1 : ir_env);
     }
-
-#else
-
-	jc = 1;
-	pc = 1;
-	ic = 1;
-	jr = 1;
-	ir = 1;
-
-#endif
 
 	if ( l3_op == BLIS_TRMM )
 	{

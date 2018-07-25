@@ -98,6 +98,11 @@ RANLIB            := @RANLIB@
 CFLAGS_PRESET     := @cflags_preset@
 LDFLAGS_PRESET    := @ldflags_preset@
 
+# Additional LDFLAGS for threading. If any additional flags or libraries
+# are needed to link with TCI, then they must be passed to the link command
+# for programs linking with BLIS.
+TCI_LDFLAGS       := @tci_ldflags@
+
 # The level of debugging info to generate.
 DEBUG_TYPE        := @debug_type@
 

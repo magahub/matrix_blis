@@ -2153,6 +2153,91 @@ main()
 	# the default implied option will be --with-memkind; otherwise, will be
 	# --without-memkind.
 	has_memkind=$(has_libmemkind)
+    
+    
+    # -- Configure TCI --------------------------------------------------------
+
+    # Check the threading model flag and standardize its value, if needed.
+    # NOTE: 'omp' is deprecated but still supported; 'openmp' is preferred.
+    if [ "x${threading_model}" = "xauto" ]; then
+        echo "${script_name}: determining the threading model automatically."
+    elif [ "x${threading_model}" = "xopenmp" ] ||
+         [ "x${threading_model}" = "xomp" ]; then
+        echo "${script_name}: using OpenMP for threading."
+        threading_model="openmp" # Standardize the value.
+    elif [ "x${threading_model}" = "xpthreads" ] ||
+         [ "x${threading_model}" = "xpthread" ] ||
+         [ "x${threading_model}" = "xposix" ]; then
+        echo "${script_name}: using Pthreads for threading."
+        threading_model="pthreads" # Standardize the value.
+    elif [ "x${threading_model}" = "xdispatch" ] ||
+         [ "x${threading_model}" = "xlibdispatch" ] ||
+         [ "x${threading_model}" = "xgcd" ]; then
+        echo "${script_name}: using libdispatch for threading."
+        threading_model="dispatch" # Standardize the value.
+    elif [ "x${threading_model}" = "xtbb" ]; then
+        echo "${script_name}: using TBB for threading."
+    elif [ "x${threading_model}" = "xno" ] ||
+         [ "x${threading_model}" = "xnone" ]; then
+        echo "${script_name}: threading is disabled."
+        threading_model="none" # Standardize the value.
+    else
+        echo "Unsupported threading model: ${threading_model}."
+        exit 1
+    fi
+
+    # Check if the debug flag was specified.
+    if [ -n "${debug_flag}" ]; then
+        if [ "x${debug_type}" = "xopt" ]; then
+            echo "${script_name}: enabling debug symbols with optimizations."
+                elif [ "x${debug_type}" = "xsde" ]; then
+            debug_type='sde'
+            echo "${script_name}: enabling SDE processor emulation."
+        else
+            debug_type='noopt'
+            echo "${script_name}: enabling debug symbols; optimizations disabled."
+        fi
+    else
+        debug_type='off'
+        echo "${script_name}: debug symbols disabled."
+    fi
+    
+    tci_flags="-O2"
+    if [ x"${debug_type}" = xopt ]; then
+        tci_flags="-g -O2"
+    elif [ x"${debug_type}" = xnoopt ]; then
+        tci_flags="-g -O0"
+    fi
+    
+    echo "Configuring TCI with --enable-thread-model=${threading_model} " \
+                                 "CC=${found_cc} CXX=${found_cxx} " \
+                                 "CFLAGS=\"${cflags_preset} ${tci_flags}\" " \
+                                 "CXXFLAGS=\"${cflags_preset} ${tci_flags}\" " \
+                                 "LDFLAGS=\"${ldflags_preset}\" " \
+                                 "--enable-static --disable-shared"
+                                                      
+    case "${dist_path}" in
+        /*)
+            tci_path="${dist_path}/tci"
+            ;;
+        *)
+            tci_path="../${dist_path}/tci"
+            ;;
+    esac
+    
+    if [ ! -d tci ]; then mkdir tci; fi
+    cd tci
+    ${tci_path}/configure --enable-thread-model=${threading_model} \
+                          CC=${found_cc} CXX=${found_cxx} \
+                          CFLAGS="${cflags_preset} ${tci_flags}" \
+                          CXXFLAGS="${cflags_preset} ${tci_flags}" \
+                          LDFLAGS="${ldflags_preset}" \
+                          --enable-static --disable-shared
+    cd ..
+
+    tci_libs=`cat tci/config.log | grep -E "^LIBS=" | sed -E "s/.*='(.*)'/\1/"`
+    tci_ldflags=`cat tci/config.log | grep -E "^LDFLAGS=" | sed -E "s/.*='(.*)'/\1/"`
+    tci_ldflags="${tci_ldflags} ${tci_libs}"
 
 
 	# -- Prepare variables for subsitution into template files -----------------
@@ -2214,22 +2299,6 @@ main()
 		echo "${script_name}: no preset LDFLAGS detected."
 	fi
 
-	# Check if the debug flag was specified.
-	if [ -n "${debug_flag}" ]; then
-		if [ "x${debug_type}" = "xopt" ]; then
-			echo "${script_name}: enabling debug symbols with optimizations."
-                elif [ "x${debug_type}" = "xsde" ]; then
-			debug_type='sde'
-			echo "${script_name}: enabling SDE processor emulation."
-		else
-			debug_type='noopt'
-			echo "${script_name}: enabling debug symbols; optimizations disabled."
-		fi
-	else
-		debug_type='off'
-		echo "${script_name}: debug symbols disabled."
-	fi
-
 	# Check if the verbose make flag was specified.
 	if [ "x${enable_verbose}" = "xyes" ]; then
 		echo "${script_name}: enabling verbose make output. (disable with 'make V=0'.)"
@@ -2250,34 +2319,7 @@ main()
 		exit 1
 	fi
 
-	# Check the threading model flag and standardize its value, if needed.
-	# NOTE: 'omp' is deprecated but still supported; 'openmp' is preferred.
-	if [ "x${threading_model}" = "xauto" ]; then
-		echo "${script_name}: determining the threading model automatically."
-	elif [ "x${threading_model}" = "xopenmp" ] ||
-	     [ "x${threading_model}" = "xomp" ]; then
-		echo "${script_name}: using OpenMP for threading."
-		threading_model="openmp" # Standardize the value.
-	elif [ "x${threading_model}" = "xpthreads" ] ||
-	     [ "x${threading_model}" = "xpthread" ] ||
-	     [ "x${threading_model}" = "xposix" ]; then
-		echo "${script_name}: using Pthreads for threading."
-		threading_model="pthreads" # Standardize the value.
-	elif [ "x${threading_model}" = "xdispatch" ] ||
-	     [ "x${threading_model}" = "xlibdispatch" ] ||
-	     [ "x${threading_model}" = "xgcd" ]; then
-		echo "${script_name}: using libdispatch for threading."
-		threading_model="dispatch" # Standardize the value.
-	elif [ "x${threading_model}" = "xtbb" ]; then
-		echo "${script_name}: using TBB for threading."
-	elif [ "x${threading_model}" = "xno" ] ||
-	     [ "x${threading_model}" = "xnone" ]; then
-		echo "${script_name}: threading is disabled."
-		threading_model="none" # Standardize the value.
-	else
-		echo "Unsupported threading model: ${threading_model}."
-		exit 1
-	fi
+	echo "${script_name}: additional linker flags for threading: ${tci_ldflags}"
 	
 	# Convert 'yes' and 'no' flags to booleans.
 	if [ "x${enable_packbuf_pools}" = "xyes" ]; then
@@ -2453,7 +2495,8 @@ main()
 		| sed -e "s/@CXX@/${cxx_esc}/g" \
 		| sed -e "s/@RANLIB@/${ranlib_esc}/g" \
 		| sed -e "s/@cflags_preset@/${cflags_preset}/g" \
-		| sed -e "s/@ldflags_preset@/${ldflags_preset}/g" \
+        | sed -e "s/@ldflags_preset@/${ldflags_preset}/g" \
+        | sed -e "s/@tci_ldflags@/${tci_ldflags}/g" \
 		| sed -e "s/@debug_type@/${debug_type}/g" \
 		| sed -e "s/@install_libdir@/${install_libdir_esc}/g" \
 		| sed -e "s/@install_incdir@/${install_incdir_esc}/g" \
@@ -2731,36 +2774,6 @@ main()
 
 		echo "${script_name}: configured to build within top-level directory of source distribution."
 	fi
-	
-	
-	# -- Configure TCI --------------------------------------------------------
-	
-	echo "Configuring TCI with --enable-thread-model=${threading_model} " \
-	                             "CC=${found_cc} CXX=${found_cxx} " \
-	                             "CFLAGS=\"${cflags_preset} -O2\" " \
-	                             "CXXFLAGS=\"${cflags_preset} -O2\" " \
-	                             "LDFLAGS=\"${ldflags_preset}\" " \
-	                             "--enable-static --disable-shared"
-	                                                  
-	case "${dist_path}" in
-		/*)
-			tci_path="${dist_path}/tci"
-			;;
-		*)
-			tci_path="../${dist_path}/tci"
-			;;
-	esac
-	
-	if [ ! -d tci ]; then mkdir tci; fi
-	cd tci
-	${tci_path}/configure --enable-thread-model=${threading_model} \
-                          CC=${found_cc} CXX=${found_cxx} \
-                          CFLAGS="${cflags_preset} -O2" \
-                          CXXFLAGS="${cflags_preset} -O2" \
-                          LDFLAGS="${ldflags_preset}" \
-                          --enable-static --disable-shared
-	cd ..
-
 
 	# Exit peacefully.
 	return 0

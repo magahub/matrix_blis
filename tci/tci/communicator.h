@@ -48,7 +48,8 @@ typedef void (*tci_range_2d_func)(tci_comm*, uint64_t, uint64_t,
 extern "C" {
 #endif
 
-extern tci_comm* const tci_single;
+extern tci_comm _tci_single;
+#define tci_single &_tci_single
 
 int tci_comm_init_single(tci_comm* comm);
 

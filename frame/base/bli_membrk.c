@@ -41,7 +41,7 @@ void bli_membrk_init
        membrk_t* membrk
      )
 {
-	bli_mutex_init( bli_membrk_mutex( membrk ) );
+	tci_mutex_init( bli_membrk_mutex( membrk ) );
 #ifdef BLIS_ENABLE_PACKBUF_POOLS
 	bli_membrk_init_pools( cntx, membrk );
 #endif
@@ -59,7 +59,7 @@ void bli_membrk_finalize
 #ifdef BLIS_ENABLE_PACKBUF_POOLS
 	bli_membrk_finalize_pools( membrk );
 #endif
-	bli_mutex_finalize( bli_membrk_mutex( membrk ) );
+	tci_mutex_destroy( bli_membrk_mutex( membrk ) );
 }
 
 void bli_membrk_acquire_m

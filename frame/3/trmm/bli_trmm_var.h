@@ -84,7 +84,8 @@ void PASTEMAC(ch,varname) \
        void*   beta, \
        void*   c, inc_t rs_c, inc_t cs_c, \
        cntx_t* cntx, \
-       thrinfo_t* thread  \
+       dim_t ir_num_threads, dim_t ir_thread_id, \
+       dim_t jr_num_threads, dim_t jr_thread_id \
      );
 
 INSERT_GENTPROT_BASIC0( trmm_ll_ker_var2 )

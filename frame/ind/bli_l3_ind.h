@@ -65,6 +65,9 @@ void   bli_l3_ind_set_enable_dt( ind_t method, num_t dt, bool_t status );
 void   bli_l3_ind_oper_enable_only( opid_t oper, ind_t method, num_t dt );
 void   bli_l3_ind_oper_set_enable_all( opid_t oper, num_t dt, bool_t status );
 
+void bli_l3_ind_init();
+void bli_l3_ind_finalize();
+
 void   bli_l3_ind_oper_set_enable( opid_t oper, ind_t method, num_t dt, bool_t status );
 bool_t bli_l3_ind_oper_get_enable( opid_t oper, ind_t method, num_t dt );
 

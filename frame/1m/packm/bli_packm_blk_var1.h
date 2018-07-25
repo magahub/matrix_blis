@@ -67,7 +67,7 @@ void PASTEMAC(ch,varname) \
                   dim_t pd_p, inc_t ps_p, \
        void*   packm_ker, \
        cntx_t* cntx, \
-       thrinfo_t* thread  \
+       dim_t   tid, dim_t nthreads  \
      );
 
 INSERT_GENTPROT_BASIC0( packm_blk_var1 )

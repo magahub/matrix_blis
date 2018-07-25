@@ -299,6 +299,7 @@ SANDBOX_PATH       := $(DIST_PATH)/$(SANDBOX_DIR)
 #
 
 # The base name of the BLIS library that we will build.
+LIBTCI             := libtci
 LIBBLIS            := libblis
 
 # Construct the base path for the library.
@@ -313,10 +314,12 @@ endif
 
 # Note: These names will be modified later to include the configuration and
 # version strings.
+LIBTCI_A           := $(LIBTCI).a
 LIBBLIS_A          := $(LIBBLIS).a
 LIBBLIS_SO         := $(LIBBLIS).$(SHLIB_EXT)
 
 # Append the base library path to the library names.
+LIBTCI_A_PATH      := $(BASE_LIB_PATH)/$(LIBTCI_A)
 LIBBLIS_A_PATH     := $(BASE_LIB_PATH)/$(LIBBLIS_A)
 LIBBLIS_SO_PATH    := $(BASE_LIB_PATH)/$(LIBBLIS_SO)
 
@@ -369,7 +372,7 @@ LIBPTHREAD := -lpthread
 # Default linker flags.
 # NOTE: -lpthread is needed unconditionally because BLIS uses pthread_once()
 # to initialize itself in a thread-safe manner.
-LDFLAGS    := $(LDFLAGS_PRESET) $(LIBM) $(LIBPTHREAD)
+LDFLAGS    := $(LDFLAGS_PRESET) $(TCI_LDFLAGS) $(LIBM) $(LIBPTHREAD)
 
 # Add libmemkind to the link-time flags, if it was enabled at configure-time.
 ifeq ($(MK_ENABLE_MEMKIND),yes)
@@ -401,9 +404,11 @@ endif
 # Decide which library to link to for things like the testsuite. Default
 # to the static library, unless only the shared library was enabled, in
 # which case we use the shared library.
+LIBTCI_LINK   := $(LIBTCI_A_PATH)
 LIBBLIS_LINK   := $(LIBBLIS_A_PATH)
 ifeq ($(MK_ENABLE_SHARED),yes)
 ifeq ($(MK_ENABLE_STATIC),no)
+LIBTCI_LINK   := 
 LIBBLIS_LINK   := $(LIBBLIS_SO_PATH)
 endif
 endif

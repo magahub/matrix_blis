@@ -43,7 +43,7 @@ static pool_t* bli_membrk_pool( dim_t pool_index, membrk_t* membrk )
 	return &(membrk->pools[ pool_index ]);
 }
 
-static mtx_t* bli_membrk_mutex( membrk_t* membrk )
+static tci_mutex* bli_membrk_mutex( membrk_t* membrk )
 {
 	return &(membrk->mutex);
 }
@@ -74,12 +74,12 @@ static void bli_membrk_set_free_fp( void* free_fp, membrk_t* membrk )
 
 static void bli_membrk_lock( membrk_t* membrk )
 {
-	bli_mutex_lock( &(membrk->mutex) );
+	tci_mutex_lock( &(membrk->mutex) );
 }
 
 static void bli_membrk_unlock( membrk_t* membrk )
 {
-	bli_mutex_unlock( &(membrk->mutex) );
+	tci_mutex_unlock( &(membrk->mutex) );
 }
 
 static void* bli_membrk_malloc( size_t size, membrk_t* membrk )

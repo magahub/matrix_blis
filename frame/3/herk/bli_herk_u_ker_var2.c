@@ -51,11 +51,60 @@ typedef void (*FUNCPTR_T)(
                            void*   beta,
                            void*   c, inc_t rs_c, inc_t cs_c,
                            cntx_t* cntx,
-                           thrinfo_t* thread
+                           dim_t ir_num_threads, dim_t ir_thread_id,
+                           dim_t jr_num_threads, dim_t jr_thread_id
                          );
 
 static FUNCPTR_T GENARRAY(ftypes,herk_u_ker_var2);
 
+typedef struct
+{
+    FUNCPTR_T f;
+    doff_t  diagoffc;
+    pack_t  schema_a;
+    pack_t  schema_b;
+    dim_t   m;
+    dim_t   n;
+    dim_t   k;
+    void*   alpha;
+    void*   a; inc_t cs_a; inc_t is_a;
+               dim_t pd_a; inc_t ps_a;
+    void*   b; inc_t rs_b; inc_t is_b;
+               dim_t pd_b; inc_t ps_b;
+    void*   beta;
+    void*   c; inc_t rs_c; inc_t cs_c;
+    cntx_t* cntx;
+    dim_t ir_num_threads;
+    dim_t jr_num_threads;
+} herk_u_ker_params;
+
+static void bli_herk_u_ker_var2_thread( tci_comm* comm,
+                                        uint64_t tid,
+                                        uint64_t unused,
+                                        void* param_ )
+{
+    herk_u_ker_params* param = param_;
+
+    dim_t ir_thread_id = tid % param->ir_num_threads;
+    dim_t jr_thread_id = tid / param->ir_num_threads;
+
+    param->f( param->diagoffc,
+              param->schema_a,
+              param->schema_b,
+              param->m,
+              param->n,
+              param->k,
+              param->alpha,
+              param->a, param->cs_a, param->is_a,
+                        param->pd_a, param->ps_a,
+              param->b, param->rs_b, param->is_b,
+                        param->pd_b, param->ps_b,
+              param->beta,
+              param->c, param->rs_c, param->cs_c,
+              param->cntx,
+              param->ir_num_threads, ir_thread_id,
+              param->jr_num_threads, jr_thread_id );
+}
 
 void bli_herk_u_ker_var2
      (
@@ -67,71 +116,65 @@ void bli_herk_u_ker_var2
        thrinfo_t* thread
      )
 {
-	num_t     dt_exec   = bli_obj_exec_dt( c );
+    num_t     dt_exec   = bli_obj_exec_dt( c );
 
-	doff_t    diagoffc  = bli_obj_diag_offset( c );
+    herk_u_ker_params param;
 
-	pack_t    schema_a  = bli_obj_pack_schema( a );
-	pack_t    schema_b  = bli_obj_pack_schema( b );
+    param.diagoffc  = bli_obj_diag_offset( c );
 
-	dim_t     m         = bli_obj_length( c );
-	dim_t     n         = bli_obj_width( c );
-	dim_t     k         = bli_obj_width( a );
+    param.schema_a  = bli_obj_pack_schema( a );
+    param.schema_b  = bli_obj_pack_schema( b );
 
-	void*     buf_a     = bli_obj_buffer_at_off( a );
-	inc_t     cs_a      = bli_obj_col_stride( a );
-	inc_t     is_a      = bli_obj_imag_stride( a );
-	dim_t     pd_a      = bli_obj_panel_dim( a );
-	inc_t     ps_a      = bli_obj_panel_stride( a );
+    param.m         = bli_obj_length( c );
+    param.n         = bli_obj_width( c );
+    param.k         = bli_obj_width( a );
 
-	void*     buf_b     = bli_obj_buffer_at_off( b );
-	inc_t     rs_b      = bli_obj_row_stride( b );
-	inc_t     is_b      = bli_obj_imag_stride( b );
-	dim_t     pd_b      = bli_obj_panel_dim( b );
-	inc_t     ps_b      = bli_obj_panel_stride( b );
+    param.a         = bli_obj_buffer_at_off( a );
+    param.cs_a      = bli_obj_col_stride( a );
+    param.is_a      = bli_obj_imag_stride( a );
+    param.pd_a      = bli_obj_panel_dim( a );
+    param.ps_a      = bli_obj_panel_stride( a );
 
-	void*     buf_c     = bli_obj_buffer_at_off( c );
-	inc_t     rs_c      = bli_obj_row_stride( c );
-	inc_t     cs_c      = bli_obj_col_stride( c );
+    param.b         = bli_obj_buffer_at_off( b );
+    param.rs_b      = bli_obj_row_stride( b );
+    param.is_b      = bli_obj_imag_stride( b );
+    param.pd_b      = bli_obj_panel_dim( b );
+    param.ps_b      = bli_obj_panel_stride( b );
 
-	obj_t     scalar_a;
-	obj_t     scalar_b;
+    param.c         = bli_obj_buffer_at_off( c );
+    param.rs_c      = bli_obj_row_stride( c );
+    param.cs_c      = bli_obj_col_stride( c );
 
-	void*     buf_alpha;
-	void*     buf_beta;
+    param.cntx      = cntx;
 
-	FUNCPTR_T f;
+    param.ir_num_threads = thread->sub_node->comm->nthread;
+    param.jr_num_threads = thread->sub_node->comm->ngang;
 
-	// Detach and multiply the scalars attached to A and B.
-	bli_obj_scalar_detach( a, &scalar_a );
-	bli_obj_scalar_detach( b, &scalar_b );
-	bli_mulsc( &scalar_a, &scalar_b );
+    obj_t     scalar_a;
+    obj_t     scalar_b;
 
-	// Grab the addresses of the internal scalar buffers for the scalar
-	// merged above and the scalar attached to C.
-	buf_alpha = bli_obj_internal_scalar_buffer( &scalar_b );
-	buf_beta  = bli_obj_internal_scalar_buffer( c );
+    // Detach and multiply the scalars attached to A and B.
+    bli_obj_scalar_detach( a, &scalar_a );
+    bli_obj_scalar_detach( b, &scalar_b );
+    bli_mulsc( &scalar_a, &scalar_b );
 
-	// Index into the type combination array to extract the correct
-	// function pointer.
-	f = ftypes[dt_exec];
+    // Grab the addresses of the internal scalar buffers for the scalar
+    // merged above and the scalar attached to C.
+    param.alpha = bli_obj_internal_scalar_buffer( &scalar_b );
+    param.beta  = bli_obj_internal_scalar_buffer( c );
 
-	// Invoke the function.
-	f( diagoffc,
-	   schema_a,
-	   schema_b,
-	   m,
-	   n,
-	   k,
-	   buf_alpha,
-	   buf_a, cs_a, is_a,
-	          pd_a, ps_a,
-	   buf_b, rs_b, is_b,
-	          pd_b, ps_b,
-	   buf_beta,
-	   buf_c, rs_c, cs_c,
-	   cntx,
-	   thread );
+    // Index into the type combination array to extract the correct
+    // function pointer.
+    param.f = ftypes[dt_exec];
+
+    tci_comm* comm = thread->comm;
+    tci_range range = {comm->nthread, 1};
+
+    // Invoke the function.
+    tci_comm_distribute_over_threads( comm,
+                                      range,
+                                      bli_herk_u_ker_var2_thread,
+                                      &param );
 }
 
 
@@ -154,7 +197,8 @@ void PASTEMAC(ch,varname) \
        void*   beta, \
        void*   c, inc_t rs_c, inc_t cs_c, \
        cntx_t* cntx, \
-       thrinfo_t* thread  \
+       dim_t ir_num_threads, dim_t ir_thread_id, \
+       dim_t jr_num_threads, dim_t jr_thread_id \
      ) \
 { \
 	const num_t     dt         = PASTEMAC(ch,type); \
@@ -277,12 +321,6 @@ void PASTEMAC(ch,varname) \
 	b1 = b_cast; \
 	c1 = c_cast; \
 \
-	thrinfo_t* caucus    = bli_thrinfo_sub_node( thread ); \
-	dim_t jr_num_threads = bli_thread_n_way( thread ); \
-	dim_t jr_thread_id   = bli_thread_work_id( thread ); \
-	dim_t ir_num_threads = bli_thread_n_way( caucus ); \
-	dim_t ir_thread_id   = bli_thread_work_id( caucus ); \
-\
 	/* Loop over the n dimension (NR columns at a time). */ \
 	for ( j = jr_thread_id; j < n_iter; j += jr_num_threads ) \
 	{ \
@@ -312,11 +350,11 @@ void PASTEMAC(ch,varname) \
 			m_cur = ( bli_is_not_edge_f( i, m_iter, m_left ) ? MR : m_left ); \
 \
 			/* Compute the addresses of the next panels of A and B. */ \
-			a2 = bli_herk_get_next_a_upanel( caucus, a1, rstep_a ); \
+			a2 = bli_herk_get_next_a_upanel( ir_num_threads, a1, rstep_a ); \
 			if ( bli_is_last_iter( i, m_iter, ir_thread_id, ir_num_threads ) ) \
 			{ \
 				a2 = a_cast; \
-				b2 = bli_herk_get_next_b_upanel( thread, b1, cstep_b ); \
+				b2 = bli_herk_get_next_b_upanel( jr_num_threads, b1, cstep_b ); \
 				if ( bli_is_last_iter( j, n_iter, jr_thread_id, jr_num_threads ) ) \
 					b2 = b_cast; \
 			} \

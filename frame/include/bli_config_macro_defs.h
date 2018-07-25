@@ -66,39 +66,6 @@
 #endif
 
 
-// -- MULTITHREADING -----------------------------------------------------------
-
-// Enable multithreading via POSIX threads.
-#ifdef BLIS_ENABLE_PTHREADS
-  // No additional definitions needed.
-#else
-  // Default behavior is disabled.
-#endif
-
-// Enable multithreading via OpenMP.
-#ifdef BLIS_ENABLE_OPENMP
-  // No additional definitions needed.
-#else
-  // Default behavior is disabled.
-#endif
-
-// Perform a sanity check to make sure the user doesn't try to enable
-// both OpenMP and pthreads.
-#if defined ( BLIS_ENABLE_OPENMP ) && \
-    defined ( BLIS_ENABLE_PTHREADS )
-  #error "BLIS_ENABLE_OPENMP and BLIS_ENABLE_PTHREADS may not be simultaneously defined."
-#endif
-
-// Here, we define BLIS_ENABLE_MULTITHREADING if either OpenMP
-// or pthreads are enabled. This macro is useful in situations when
-// we want to detect use of either OpenMP or pthreads (as opposed
-// to neither being used).
-#if defined ( BLIS_ENABLE_OPENMP ) || \
-    defined ( BLIS_ENABLE_PTHREADS )
-  #define BLIS_ENABLE_MULTITHREADING
-#endif
-
-
 // -- MISCELLANEOUS OPTIONS ----------------------------------------------------
 
 // Do NOT require the cross-blocksize constraints. That is, do not enforce

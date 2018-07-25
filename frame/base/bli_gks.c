@@ -46,9 +46,7 @@ static void*    cntx_ind_init[ BLIS_NUM_ARCHS ];
 // functions for reference kernels.
 static void*    cntx_ref_init[ BLIS_NUM_ARCHS ];
 
-#ifdef BLIS_ENABLE_PTHREADS
-pthread_mutex_t gks_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
+tci_mutex gks_mutex;
 
 // Define a function pointer type for context initialization functions.
 typedef void (*nat_cntx_init_ft)( cntx_t* cntx );
@@ -59,6 +57,8 @@ typedef void (*ind_cntx_init_ft)( ind_t method, num_t dt, cntx_t* cntx );
 
 void bli_gks_init( void )
 {
+    tci_mutex_init( &gks_mutex );
+
 	{
 		// Initialize the internal data structure we use to track registered
 		// contexts.
@@ -462,12 +462,7 @@ cntx_t* bli_gks_query_ind_cntx
 	// gks[ id ] is non-NULL and gks[ id ][ BLIS_NAT ] is also non-NULL
 	// and refers to a context initialized with valid data).
 
-#ifdef BLIS_ENABLE_OPENMP
-	_Pragma( "omp critical (gks)" )
-#endif
-#ifdef BLIS_ENABLE_PTHREADS
-	pthread_mutex_lock( &gks_mutex );
-#endif
+	tci_mutex_lock( &gks_mutex );
 
 	// BEGIN CRITICAL SECTION
 	{
@@ -504,9 +499,7 @@ cntx_t* bli_gks_query_ind_cntx
 	}
 	// END CRITICAL SECTION
 
-#ifdef BLIS_ENABLE_PTHREADS
-	pthread_mutex_unlock( &gks_mutex );
-#endif
+	tci_mutex_unlock( &gks_mutex );
 
 	// Return the address of the newly-allocated/initialized context.
 	return gks_id_ind;

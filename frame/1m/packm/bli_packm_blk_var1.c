@@ -57,11 +57,35 @@ typedef void (*FUNCPTR_T)(
                                       dim_t pd_p, inc_t ps_p,
                            void*   packm_ker,
                            cntx_t* cntx,
-                           thrinfo_t* thread
+                           dim_t   tid, dim_t nthreads
                          );
 
 static FUNCPTR_T GENARRAY(ftypes,packm_blk_var1);
 
+typedef struct
+{
+    FUNCPTR_T f;
+    struc_t strucc;
+    doff_t  diagoffc;
+    diag_t  diagc;
+    uplo_t  uploc;
+    trans_t transc;
+    pack_t  schema;
+    bool_t  invdiag;
+    bool_t  revifup;
+    bool_t  reviflo;
+    dim_t   m;
+    dim_t   n;
+    dim_t   m_max;
+    dim_t   n_max;
+    void*   kappa;
+    void*   c; inc_t rs_c; inc_t cs_c;
+    void*   p; inc_t rs_p; inc_t cs_p;
+               inc_t is_p;
+               dim_t pd_p; inc_t ps_p;
+    void*   packm_ker;
+    cntx_t* cntx;
+} packm_params;
 
 static func_t packm_struc_cxk_kers[BLIS_NUM_PACK_SCHEMA_TYPES] =
 {
@@ -98,6 +122,38 @@ static func_t packm_struc_cxk_kers[BLIS_NUM_PACK_SCHEMA_TYPES] =
                    NULL,                      bli_zpackm_struc_cxk_1er,  } },
 };
 
+static void bli_packm_blk_var1_thread
+            (
+              tci_comm* comm,
+              uint64_t tid,
+              uint64_t unused,
+              void* params_
+            )
+{
+    packm_params* params = params_;
+
+    params->f(params->strucc,
+              params->diagoffc,
+              params->diagc,
+              params->uploc,
+              params->transc,
+              params->schema,
+              params->invdiag,
+              params->revifup,
+              params->reviflo,
+              params->m,
+              params->n,
+              params->m_max,
+              params->n_max,
+              params->kappa,
+              params->c, params->rs_c, params->cs_c,
+              params->p, params->rs_p, params->cs_p,
+                         params->is_p,
+                         params->pd_p, params->ps_p,
+              params->packm_ker,
+              params->cntx,
+              tid, comm->nthread );
+}
 
 void bli_packm_blk_var1
      (
@@ -108,54 +164,50 @@ void bli_packm_blk_var1
        thrinfo_t* t
      )
 {
-	num_t     dt_cp      = bli_obj_dt( c );
+	num_t dt_cp = bli_obj_dt( c );
 
-	struc_t   strucc     = bli_obj_struc( c );
-	doff_t    diagoffc   = bli_obj_diag_offset( c );
-	diag_t    diagc      = bli_obj_diag( c );
-	uplo_t    uploc      = bli_obj_uplo( c );
-	trans_t   transc     = bli_obj_conjtrans_status( c );
-	pack_t    schema     = bli_obj_pack_schema( p );
-	bool_t    invdiag    = bli_obj_has_inverted_diag( p );
-	bool_t    revifup    = bli_obj_is_pack_rev_if_upper( p );
-	bool_t    reviflo    = bli_obj_is_pack_rev_if_lower( p );
+	packm_params param;
 
-	dim_t     m_p        = bli_obj_length( p );
-	dim_t     n_p        = bli_obj_width( p );
-	dim_t     m_max_p    = bli_obj_padded_length( p );
-	dim_t     n_max_p    = bli_obj_padded_width( p );
+	param.strucc     = bli_obj_struc( c );
+	param.diagoffc   = bli_obj_diag_offset( c );
+	param.diagc      = bli_obj_diag( c );
+	param.uploc      = bli_obj_uplo( c );
+	param.transc     = bli_obj_conjtrans_status( c );
+	param.schema     = bli_obj_pack_schema( p );
+	param.invdiag    = bli_obj_has_inverted_diag( p );
+	param.revifup    = bli_obj_is_pack_rev_if_upper( p );
+	param.reviflo    = bli_obj_is_pack_rev_if_lower( p );
 
-	void*     buf_c      = bli_obj_buffer_at_off( c );
-	inc_t     rs_c       = bli_obj_row_stride( c );
-	inc_t     cs_c       = bli_obj_col_stride( c );
+	param.m          = bli_obj_length( p );
+	param.n          = bli_obj_width( p );
+	param.m_max      = bli_obj_padded_length( p );
+	param.n_max      = bli_obj_padded_width( p );
 
-	void*     buf_p      = bli_obj_buffer_at_off( p );
-	inc_t     rs_p       = bli_obj_row_stride( p );
-	inc_t     cs_p       = bli_obj_col_stride( p );
-	inc_t     is_p       = bli_obj_imag_stride( p );
-	dim_t     pd_p       = bli_obj_panel_dim( p );
-	inc_t     ps_p       = bli_obj_panel_stride( p );
+	param.c          = bli_obj_buffer_at_off( c );
+	param.rs_c       = bli_obj_row_stride( c );
+	param.cs_c       = bli_obj_col_stride( c );
 
-	obj_t     kappa;
-	obj_t*    kappa_p;
-	void*     buf_kappa;
+	param.p          = bli_obj_buffer_at_off( p );
+	param.rs_p       = bli_obj_row_stride( p );
+	param.cs_p       = bli_obj_col_stride( p );
+	param.is_p       = bli_obj_imag_stride( p );
+	param.pd_p       = bli_obj_panel_dim( p );
+	param.ps_p       = bli_obj_panel_stride( p );
 
-	func_t*   packm_kers;
-	void*     packm_ker;
+	param.cntx       = cntx;
 
-	FUNCPTR_T f;
-
+	obj_t kappa;
 
 	// Treatment of kappa (ie: packing during scaling) depends on
 	// whether we are executing an induced method.
-	if ( bli_is_nat_packed( schema ) )
+	if ( bli_is_nat_packed( param.schema ) )
 	{
 		// This branch is for native execution, where we assume that
 		// the micro-kernel will always apply the alpha scalar of the
 		// higher-level operation. Thus, we use BLIS_ONE for kappa so
 		// that the underlying packm implementation does not perform
 		// any scaling during packing.
-		buf_kappa = bli_obj_buffer_for_const( dt_cp, &BLIS_ONE );
+	    param.kappa = bli_obj_buffer_for_const( dt_cp, &BLIS_ONE );
 	}
 	else // if ( bli_is_ind_packed( schema ) )
 	{
@@ -176,88 +228,43 @@ void bli_packm_blk_var1
 			// Reset the attached scalar (to 1.0).
 			bli_obj_scalar_reset( p );
 
-			kappa_p = &kappa;
+			param.kappa = bli_obj_buffer_for_const( dt_cp, &kappa );
 		}
 		else
 		{
 			// If the internal scalar of A has only a real component, then
 			// we will apply it later (in the micro-kernel), and so we will
 			// use BLIS_ONE to indicate no scaling during packing.
-			kappa_p = &BLIS_ONE;
+		    param.kappa = bli_obj_buffer_for_const( dt_cp, &BLIS_ONE );
 		}
-	
-		// Acquire the buffer to the kappa chosen above.
-		buf_kappa = bli_obj_buffer_for_1x1( dt_cp, kappa_p );
 	}
 
 
 	// Choose the correct func_t object based on the pack_t schema.
-#if 0
-	if      ( bli_is_4mi_packed( schema ) ) packm_kers = packm_struc_cxk_4mi_kers;
-	else if ( bli_is_3mi_packed( schema ) ||
-	          bli_is_3ms_packed( schema ) ) packm_kers = packm_struc_cxk_3mis_kers;
-	else if ( bli_is_ro_packed( schema ) ||
-	          bli_is_io_packed( schema ) ||
-	         bli_is_rpi_packed( schema ) )  packm_kers = packm_struc_cxk_rih_kers;
-	else                                    packm_kers = packm_struc_cxk_kers;
-#else
-	// The original idea here was to read the packm_ukr from the context
-	// if it is non-NULL. The problem is, it requires that we be able to
-	// assume that the packm_ukr field is initialized to NULL, which it
-	// currently is not.
 
-	//func_t* cntx_packm_kers = bli_cntx_get_packm_ukr( cntx );
+    // If the packm structure-aware kernel func_t in the context is
+    // NULL (which is the default value after the context is created),
+    // we use the default lookup table to determine the right func_t
+    // for the current schema.
+    const dim_t i = bli_pack_schema_index( param.schema );
 
-	//if ( bli_func_is_null_dt( dt_cp, cntx_packm_kers ) )
-	{
-		// If the packm structure-aware kernel func_t in the context is
-		// NULL (which is the default value after the context is created),
-		// we use the default lookup table to determine the right func_t
-		// for the current schema.
-		const dim_t i = bli_pack_schema_index( schema );
-
-		packm_kers = &packm_struc_cxk_kers[ i ];
-	}
-#if 0
-	else // cntx's packm func_t overrides
-	{
-		// If the packm structure-aware kernel func_t in the context is
-		// non-NULL (ie: assumed to be valid), we use that instead.
-		//packm_kers = bli_cntx_packm_ukrs( cntx );
-		packm_kers = cntx_packm_kers;
-	}
-#endif
-#endif
+    func_t* packm_kers = &packm_struc_cxk_kers[ i ];
 
 	// Query the datatype-specific function pointer from the func_t object.
-	packm_ker = bli_func_get_dt( dt_cp, packm_kers );
+    param.packm_ker = bli_func_get_dt( dt_cp, packm_kers );
 
 	// Index into the type combination array to extract the correct
 	// function pointer.
-	f = ftypes[dt_cp];
+    param.f = ftypes[dt_cp];
+
+    tci_comm* comm = t->comm;
+    tci_range range = {comm->nthread, 1};
 
 	// Invoke the function.
-	f( strucc,
-	   diagoffc,
-	   diagc,
-	   uploc,
-	   transc,
-	   schema,
-	   invdiag,
-	   revifup,
-	   reviflo,
-	   m_p,
-	   n_p,
-	   m_max_p,
-	   n_max_p,
-	   buf_kappa,
-	   buf_c, rs_c, cs_c,
-	   buf_p, rs_p, cs_p,
-	          is_p,
-	          pd_p, ps_p,
-	   packm_ker,
-	   cntx,
-	   t );
+    tci_comm_distribute_over_threads( comm,
+                                      range,
+                                      bli_packm_blk_var1_thread,
+                                      &param );
 }
 
 
@@ -286,7 +293,7 @@ void PASTEMAC(ch,varname) \
                   dim_t pd_p, inc_t ps_p, \
        void*   packm_ker, \
        cntx_t* cntx, \
-       thrinfo_t* thread  \
+       dim_t   tid, dim_t nthreads \
      ) \
 { \
 	PASTECH2(ch,opname,_ft) packm_ker_cast = packm_ker; \
@@ -505,7 +512,7 @@ PASTEMAC(ch,fprintm)( stdout, "packm_var2: a", m, n, \
 			/* We nudge the imaginary stride up by one if it is odd. */ \
 			is_p_use += ( bli_is_odd( is_p_use ) ? 1 : 0 ); \
 \
-			if( packm_thread_my_iter( it, thread ) ) \
+			if( bli_packm_my_iter( it, tid, nthreads ) ) \
 			{ \
 				packm_ker_cast( strucc, \
 				                diagoffp_i, \
@@ -544,7 +551,7 @@ PASTEMAC(ch,fprintm)( stdout, "packm_var2: a", m, n, \
 \
 			is_p_use = is_p; \
 \
-			if( packm_thread_my_iter( it, thread ) ) \
+            if( bli_packm_my_iter( it, tid, nthreads ) ) \
 			{ \
 				packm_ker_cast( strucc, \
 				                diagoffc_i, \
@@ -580,7 +587,7 @@ PASTEMAC(ch,fprintm)( stdout, "packm_var2: a", m, n, \
 \
 			is_p_use = is_p; \
 \
-			if( packm_thread_my_iter( it, thread ) ) \
+            if( bli_packm_my_iter( it, tid, nthreads ) ) \
 			{ \
 				packm_ker_cast( BLIS_GENERAL, \
 				                0, \

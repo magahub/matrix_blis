@@ -40,14 +40,13 @@
 #include "bli_thrinfo.h"
 
 // Include some operation-specific thrinfo_t prototypes.
-// Note that the bli_packm_thrinfo.h must be included before the others!
-#include "bli_packm_thrinfo.h"
 #include "bli_l3_thrinfo.h"
 
 // Thread range-related prototypes.
 void bli_thread_get_range_sub
      (
-       thrinfo_t* thread,
+       dim_t      n_way,
+       dim_t      my_id,
        dim_t      n,
        dim_t      bf,
        bool_t     handle_edge_low,
@@ -61,7 +60,8 @@ void bli_thread_get_range_sub
 siz_t PASTEMAC0( opname ) \
      ( \
        dir_t      direct, \
-       thrinfo_t* thr, \
+       dim_t      n_way, \
+       dim_t      my_id, \
        obj_t*     a, \
        obj_t*     b, \
        obj_t*     c, \
@@ -79,7 +79,8 @@ GENPROT( thread_get_range_ndim )
 \
 siz_t PASTEMAC0( opname ) \
      ( \
-       thrinfo_t* thr, \
+       dim_t      n_way, \
+       dim_t      my_id, \
        obj_t*     a, \
        blksz_t*   bmult, \
        dim_t*     start, \
@@ -117,7 +118,8 @@ siz_t bli_find_area_trap_l
      );
 siz_t bli_thread_get_range_weighted_sub
      (
-       thrinfo_t* thread,
+       dim_t      n_way,
+       dim_t      my_id,
        doff_t     diagoff,
        uplo_t     uplo,
        dim_t      m,
@@ -143,24 +145,18 @@ typedef void (*l3int_t)
        thrinfo_t* thread
      );
 
-typedef struct
-{
-    l3int_t   func;
-    opid_t    family;
-    obj_t*    alpha;
-    obj_t*    a;
-    obj_t*    b;
-    obj_t*    beta;
-    obj_t*    c;
-    cntx_t*   cntx;
-    cntl_t*   cntl;
-} l3_thrinfo_t;
-
 // Level-3 thread decorator prototype
 void bli_l3_thread_decorator
      (
-       tci_comm *comm,
-       void* thrinfo // really l3_thrinfo_t*
+         l3int_t   func,
+         opid_t    family,
+         obj_t*    alpha,
+         obj_t*    a,
+         obj_t*    b,
+         obj_t*    beta,
+         obj_t*    c,
+         cntx_t*   cntx,
+         cntl_t*   cntl
      );
 
 // -----------------------------------------------------------------------------

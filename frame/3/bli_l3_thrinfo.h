@@ -38,92 +38,32 @@
 
 // gemm
 
-#define bli_gemm_get_next_a_upanel( thread, a1, step ) ( a1 + step * thread->n_way )
-#define bli_gemm_get_next_b_upanel( thread, b1, step ) ( b1 + step * thread->n_way )
+#define bli_gemm_get_next_a_upanel( nthreads, a1, step ) ( a1 + step * nthreads )
+#define bli_gemm_get_next_b_upanel( nthreads, b1, step ) ( b1 + step * nthreads )
 
 // herk
 
-#define bli_herk_get_next_a_upanel( thread, a1, step ) ( a1 + step * thread->n_way )
-#define bli_herk_get_next_b_upanel( thread, b1, step ) ( b1 + step * thread->n_way )
+#define bli_herk_get_next_a_upanel( nthreads, a1, step ) ( a1 + step * nthreads )
+#define bli_herk_get_next_b_upanel( nthreads, b1, step ) ( b1 + step * nthreads )
+
+// packm
+
+#define bli_packm_my_iter( index, tid, nthreads ) ( index % nthreads == tid % nthreads )
 
 // trmm
 
-#define bli_trmm_r_ir_my_iter( index, thread ) ( index % thread->n_way == thread->work_id % thread->n_way )
-#define bli_trmm_r_jr_my_iter( index, thread ) ( index % thread->n_way == thread->work_id % thread->n_way )
-#define bli_trmm_l_ir_my_iter( index, thread ) ( index % thread->n_way == thread->work_id % thread->n_way )
-#define bli_trmm_l_jr_my_iter( index, thread ) ( index % thread->n_way == thread->work_id % thread->n_way )
+#define bli_trmm_r_ir_my_iter( index, tid, nthreads ) ( index % nthreads == tid % nthreads )
+#define bli_trmm_r_jr_my_iter( index, tid, nthreads ) ( index % nthreads == tid % nthreads )
+#define bli_trmm_l_ir_my_iter( index, tid, nthreads ) ( index % nthreads == tid % nthreads )
+#define bli_trmm_l_jr_my_iter( index, tid, nthreads ) ( index % nthreads == tid % nthreads )
 
 // trsm
 
-#define bli_trsm_my_iter( index, thread ) ( index % thread->n_way == thread->work_id % thread->n_way )
-
-//
-// thrinfo_t APIs specific to level-3 operations.
-//
-
-#if 0
-thrinfo_t* bli_l3_thrinfo_create
-     (
-       thrcomm_t* ocomm,
-       dim_t      ocomm_id,
-       dim_t      n_way,
-       dim_t      work_id,
-       thrinfo_t* sub_node
-     );
-#endif
-
-void bli_l3_thrinfo_init
-     (
-       thrinfo_t* thread,
-       thrcomm_t* ocomm,
-       dim_t      ocomm_id,
-       dim_t      n_way,
-       dim_t      work_id,
-       thrinfo_t* sub_node
-     );
-
-void bli_l3_thrinfo_init_single
-     (
-       thrinfo_t* thread
-     );
-
-void bli_l3_thrinfo_free
-     (
-       thrinfo_t* thread
-     );
+#define bli_trsm_my_iter( index, tid, nthreads ) ( index % nthreads == tid % nthreads )
 
 // -----------------------------------------------------------------------------
-
-void bli_l3_thrinfo_create_root
-     (
-       dim_t       id,
-       thrcomm_t*  gl_comm,
-       cntx_t*     cntx,
-       cntl_t*     cntl,
-       thrinfo_t** thread
-     );
 
 void bli_l3_thrinfo_print_paths
-     (
-       thrinfo_t** threads
-     );
-
-// -----------------------------------------------------------------------------
-
-#if 0
-thrinfo_t** bli_l3_thrinfo_create_roots
-     (
-       cntx_t* cntx,
-       cntl_t* cntl
-     );
-
-thrinfo_t** bli_l3_thrinfo_create_full_paths
-     (
-       cntx_t* cntx
-     );
-#endif
-
-void bli_l3_thrinfo_free_paths
      (
        thrinfo_t** threads
      );

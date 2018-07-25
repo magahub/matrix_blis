@@ -6,8 +6,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-static tci_comm _tci_single = {NULL, 1, 0, 1, 0};
-tci_comm* const tci_single = &_tci_single;
+tci_comm _tci_single = {NULL, 1, 0, 1, 0};
 
 int tci_comm_init_single(tci_comm* comm)
 {
