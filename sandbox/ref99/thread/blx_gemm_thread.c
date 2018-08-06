@@ -43,6 +43,7 @@ typedef struct
     obj_t* b;
     obj_t* c;
     cntx_t* cntx;
+    rntm_t* rntm;
     cntl_t* cntl;
 } l3_thrinfo_t;
 
@@ -61,7 +62,7 @@ void blx_gemm_thread_int( tci_comm* comm, void* thrinfo_ )
 
     // Create the root node of the current thread's thrinfo_t structure.
     thrinfo_t* glb_thread = bli_thrinfo_create( comm, FALSE, NULL );
-    thrinfo_t* thread = bli_thrinfo_create_for_cntl( thrinfo->cntx,
+    thrinfo_t* thread = bli_thrinfo_create_for_cntl( thrinfo->rntm,
                                                      thrinfo->cntl,
                                                      glb_thread );
 
@@ -71,6 +72,7 @@ void blx_gemm_thread_int( tci_comm* comm, void* thrinfo_ )
       thrinfo->b,
       thrinfo->c,
       thrinfo->cntx,
+      thrinfo->rntm,
       cntl_use,
       thread
     );
@@ -80,9 +82,9 @@ void blx_gemm_thread_int( tci_comm* comm, void* thrinfo_ )
                          cntl_use, thread );
 
     // Free the current thread's thrinfo_t structure.
-    bli_thrinfo_free( glb_thread );
+    bli_thrinfo_free( thread );
+    bli_free_intl( glb_thread );
 }
-
 void blx_gemm_thread
      (
        gemmint_t func,
@@ -91,6 +93,7 @@ void blx_gemm_thread
        obj_t*    b,
        obj_t*    c,
        cntx_t*   cntx,
+       rntm_t*   rntm,
        cntl_t*   cntl
      )
 {
@@ -102,9 +105,10 @@ void blx_gemm_thread
     info.b = b;
     info.c = c;
     info.cntx = cntx;
+    info.rntm = rntm;
     info.cntl = cntl;
 
-    dim_t n_threads = bli_cntx_get_num_threads( cntx );
+    dim_t n_threads = bli_rntm_num_threads( rntm );
 
     tci_parallelize( blx_gemm_thread_int, &info, n_threads, 0 );
 }

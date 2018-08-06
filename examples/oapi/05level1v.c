@@ -43,10 +43,12 @@ int main( int argc, char** argv )
 	dim_t m, n;
 	inc_t rs, cs;
 
+
 	//
 	// This file demonstrates working with vector objects and the level-1v
 	// operations.
 	//
+
 
 	//
 	// Example 1: Create vector objects and then broadcast (copy) scalar
@@ -95,6 +97,7 @@ int main( int argc, char** argv )
 	bli_printm( "y := alpha", &y, "%4.1f", "" );
 	bli_printm( "z := 0.0", &z, "%4.1f", "" );
 
+
 	//
 	// Example 2: Randomize a vector object.
 	//
@@ -105,6 +108,7 @@ int main( int argc, char** argv )
 	bli_randv( &w );
 
 	bli_printm( "w := randv()", &w, "%4.1f", "" );
+
 
 	//
 	// Example 3: Perform various element-wise operations on vector objects.
@@ -146,6 +150,7 @@ int main( int argc, char** argv )
 	bli_swapv( &x, &y );
 	bli_printm( "x (after swapping with y)", &x, "%4.1f", "" );
 	bli_printm( "y (after swapping with x)", &y, "%4.1f", "" );
+
 
 	//
 	// Example 4: Perform contraction-like operations on vector objects.

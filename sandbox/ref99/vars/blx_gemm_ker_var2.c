@@ -51,6 +51,7 @@ typedef void (*gemm_fp)
        void*   beta,
        void*   c, inc_t rs_c, inc_t cs_c,
        cntx_t* cntx,
+       rntm_t* rntm,
        dim_t ir_num_threads, dim_t ir_thread_id, \
        dim_t jr_num_threads, dim_t jr_thread_id \
      );
@@ -80,6 +81,7 @@ typedef struct
     void*   beta;
     void*   c; inc_t rs_c; inc_t cs_c;
     cntx_t* cntx;
+    rntm_t* rntm;
     dim_t ir_num_threads;
     dim_t jr_num_threads;
 } gemm_params;
@@ -107,6 +109,7 @@ static void blx_gemm_ker_var2_thread( tci_comm* comm,
               param->beta,
               param->c, param->rs_c, param->cs_c,
               param->cntx,
+              param->rntm,
               param->ir_num_threads, ir_thread_id,
               param->jr_num_threads, jr_thread_id );
 }
@@ -117,6 +120,7 @@ void blx_gemm_ker_var2
        obj_t*  b,
        obj_t*  c,
        cntx_t* cntx,
+       rntm_t* rntm,
        cntl_t* cntl,
        thrinfo_t* thread
      )
@@ -149,6 +153,7 @@ void blx_gemm_ker_var2
 	param.cs_c      = bli_obj_col_stride( c );
 
 	param.cntx      = cntx;
+	param.rntm      = rntm;
 
     param.ir_num_threads = thread->sub_node->comm->nthread;
     param.jr_num_threads = thread->sub_node->comm->ngang;
@@ -199,6 +204,7 @@ void PASTECH2(blx_,ch,varname) \
        void*   beta, \
        void*   c, inc_t rs_c, inc_t cs_c, \
        cntx_t* cntx, \
+       rntm_t* rntm, \
        dim_t ir_num_threads, dim_t ir_thread_id, \
        dim_t jr_num_threads, dim_t jr_thread_id \
      ) \

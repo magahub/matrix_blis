@@ -34,22 +34,19 @@
 
 #include "blis.h"
 
-typedef struct
+void bli_trsm_blk_var1
+     (
+       obj_t*  a,
+       obj_t*  b,
+       obj_t*  c,
+       cntx_t* cntx,
+       rntm_t* rntm,
+       cntl_t* cntl,
+       thrinfo_t* thread
+     )
 {
-    obj_t* a;
-    obj_t* b;
-    obj_t* c;
-    cntx_t* cntx;
-    cntl_t* cntl;
-    thrinfo_t* thread;
-} trsm_params;
-
-static void bli_trsm_blk_var1_thread( tci_comm* comm,
-                                      uint64_t gid,
-                                      uint64_t unused,
-                                      void* param_ )
-{
-    trsm_params* param = param_;
+    // Prune any zero region that exists along the partitioning dimension.
+    bli_l3_prune_unref_mparts_m( a, b, c, cntl );
 
     obj_t a1, c1;
 
@@ -60,72 +57,41 @@ static void bli_trsm_blk_var1_thread( tci_comm* comm,
     dim_t my_start, my_end;
 
     // Determine the direction in which to partition (forwards or backwards).
-    direct = bli_l3_direct( param->a, param->b, param->c, param->cntl );
+    direct = bli_l3_direct( a, b, c, cntl );
 
     // Determine the current thread's subpartition range.
     bli_thread_get_range_mdim
     (
-      direct, comm->ngang, gid, param->a, param->b, param->c, param->cntl,
-      param->cntx, &my_start, &my_end
+      direct, thread->comm->ngang, thread->comm->gid, a, b, c, cntl,
+      cntx, &my_start, &my_end
     );
 
     // Partition along the m dimension.
     for ( i = my_start; i < my_end; i += b_alg )
     {
         // Determine the current algorithmic blocksize.
-        b_alg = bli_determine_blocksize( direct, i, my_end, param->a,
-                                         bli_cntl_bszid( param->cntl ),
-                                         param->cntx );
+        b_alg = bli_determine_blocksize( direct, i, my_end, a,
+                                         bli_cntl_bszid( cntl ), cntx );
 
         // Acquire partitions for A1 and C1.
         bli_acquire_mpart_mdim( direct, BLIS_SUBPART1,
-                                i, b_alg, param->a, &a1 );
+                                i, b_alg, a, &a1 );
         bli_acquire_mpart_mdim( direct, BLIS_SUBPART1,
-                                i, b_alg, param->c, &c1 );
+                                i, b_alg, c, &c1 );
 
         // Perform trsm subproblem.
         bli_trsm_int
         (
           &BLIS_ONE,
           &a1,
-          param->b,
+          b,
           &BLIS_ONE,
           &c1,
-          param->cntx,
-          bli_cntl_sub_node( param->cntl ),
-          bli_thrinfo_sub_node( param->thread )
+          cntx,
+          rntm,
+          bli_cntl_sub_node( cntl ),
+          bli_thrinfo_sub_node( thread )
         );
     }
-}
-
-void bli_trsm_blk_var1
-     (
-       obj_t*  a,
-       obj_t*  b,
-       obj_t*  c,
-       cntx_t* cntx,
-       cntl_t* cntl,
-       thrinfo_t* thread
-     )
-{
-    // Prune any zero region that exists along the partitioning dimension.
-    bli_l3_prune_unref_mparts_m( a, b, c, cntl );
-
-    trsm_params param;
-
-    param.a = a;
-    param.b = b;
-    param.c = c;
-    param.cntx = cntx;
-    param.cntl = cntl;
-    param.thread = thread;
-
-    tci_comm* comm = thread->comm;
-    tci_range range = {comm->ngang, 1};
-
-    tci_comm_distribute_over_gangs( comm,
-                                    range,
-                                    bli_trsm_blk_var1_thread,
-                                    &param );
 }
 

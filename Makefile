@@ -573,13 +573,28 @@ libblis: check-env $(MK_LIBS)
 
 $(LIBBLIS_A_PATH): $(MK_BLIS_OBJS) tci
 ifeq ($(ENABLE_VERBOSE),yes)
+ifeq ($(ARG_MAX_HACK),yes)
+	$(file > $@.in,$(MK_BLIS_OBJS))
+	$(AR) $(ARFLAGS) $@ @$@.in
+	$(RM_F) $@.in
+	$(RANLIB) $@
+else
 	$(AR) $(ARFLAGS) $@ $(MK_BLIS_OBJS)
 	$(RANLIB) $@
+endif
 	cp -f ./tci/lib/.libs/libtci.a $(BASE_LIB_PATH)/libtci.a
+else # ifeq ($(ENABLE_VERBOSE),no)
+ifeq ($(ARG_MAX_HACK),yes)
+	@echo "Archiving $@"
+	@$(file > $@.in,$(MK_BLIS_OBJS))
+	@$(AR) $(ARFLAGS) $@ @$@.in
+	@$(RM_F) $@.in
+	@$(RANLIB) $@
 else
 	@echo "Archiving $@"
 	@$(AR) $(ARFLAGS) $@ $(MK_BLIS_OBJS)
 	@$(RANLIB) $@
+endif
 	@cp -f ./tci/lib/.libs/libtci.a $(BASE_LIB_PATH)/libtci.a
 endif
 
@@ -588,10 +603,23 @@ endif
 
 $(LIBBLIS_SO_PATH): $(MK_BLIS_OBJS) tci
 ifeq ($(ENABLE_VERBOSE),yes)
+ifeq ($(ARG_MAX_HACK),yes)
+	$(file > $@.in,$(MK_BLIS_OBJS) ./tci/lib/.libs/libtci.a)
+	$(LINKER) $(SOFLAGS) $(LDFLAGS) -o $@ @$@.in
+	$(RM_F) $@.in
+else
 	$(LINKER) $(SOFLAGS) $(LDFLAGS) -o $@ $(MK_BLIS_OBJS) ./tci/lib/.libs/libtci.a
-else 
+endif
+else # ifeq ($(ENABLE_VERBOSE),no)
+ifeq ($(ARG_MAX_HACK),yes)
+	@echo "Dynamically linking $@"
+	@$(file > $@.in,$(MK_BLIS_OBJS) ./tci/lib/.libs/libtci.a)
+	@$(LINKER) $(SOFLAGS) $(LDFLAGS) -o $@ @$@.in
+	@$(RM_F) $@.in
+else
 	@echo "Dynamically linking $@"
 	@$(LINKER) $(SOFLAGS) $(LDFLAGS) -o $@ $(MK_BLIS_OBJS) ./tci/lib/.libs/libtci.a
+endif
 endif
 
 
@@ -869,6 +897,7 @@ showconfig: check-env
 	@echo "enable CBLAS API?      $(MK_ENABLE_CBLAS)"
 	@echo "build static library?  $(MK_ENABLE_STATIC)"
 	@echo "build shared library?  $(MK_ENABLE_SHARED)"
+	@echo "ARG_MAX hack enabled?  $(ARG_MAX_HACK)"
 
 
 # --- Clean rules ---

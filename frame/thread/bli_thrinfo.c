@@ -106,8 +106,8 @@ void bli_thrinfo_init_single
 
 thrinfo_t* bli_thrinfo_create_for_cntl
      (
-       cntx_t*    cntx,
-       cntl_t*    cntl_chl,
+       rntm_t*    rntm,
+       cntl_t*    cntl,
        thrinfo_t* thread_par
      )
 {
@@ -116,12 +116,12 @@ thrinfo_t* bli_thrinfo_create_for_cntl
     // We must handle two cases: those where the next node in the
     // control tree is a partitioning node, and those where it is
     // a non-partitioning (ie: packing) node.
-    if ( bli_cntl_bszid( cntl_chl ) != BLIS_NO_PART )
+    if ( bli_cntl_bszid( cntl ) != BLIS_NO_PART )
     {
         // Create the child thrinfo_t node corresponding to cntl_chl,
         // with cntl_par being the parent.
-        bszid_t bszid_chl = bli_cntl_bszid( cntl_chl );
-        dim_t child_n_way = bli_cntx_way_for_bszid( bszid_chl, cntx );
+        bszid_t bszid = bli_cntl_bszid( cntl );
+        dim_t child_n_way = bli_rntm_ways_for( bszid, rntm );
 
         tci_comm* new_comm = bli_malloc_intl( sizeof( tci_comm ) );
         tci_comm_gang( bli_thrinfo_ocomm( thread_par ), new_comm, TCI_EVENLY, child_n_way, 0 );
@@ -156,11 +156,13 @@ thrinfo_t* bli_thrinfo_create_for_cntl
 
 void bli_thrinfo_grow
      (
-       cntx_t*    cntx,
+       rntm_t*    rntm,
        cntl_t*    cntl,
        thrinfo_t* thread
      )
 {
+    if ( bli_cntl_sub_node( cntl ) == NULL) return;
+
     // If the sub-node of the thrinfo_t object is non-NULL, we don't
     // need to create it, and will just use the existing sub-node as-is.
     if ( bli_thrinfo_sub_node( thread ) != NULL ) return;
@@ -169,7 +171,7 @@ void bli_thrinfo_grow
     // pointer to the (eldest) child.
     thrinfo_t* thread_child = bli_thrinfo_create_for_cntl
     (
-      cntx,
+      rntm,
       bli_cntl_sub_node( cntl ),
       thread
     );

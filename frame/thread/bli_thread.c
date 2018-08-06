@@ -37,6 +37,13 @@
 thrinfo_t BLIS_PACKM_SINGLE_THREADED = { tci_single, FALSE, NULL };
 thrinfo_t BLIS_GEMM_SINGLE_THREADED = { tci_single, FALSE, NULL };
 
+// The global rntm_t structure, which holds the global thread
+// settings.
+static rntm_t global_rntm;
+
+// A mutex to allow synchronous access to the global rntm_t structure.
+static mtx_t global_rntm_mutex;
+
 // -----------------------------------------------------------------------------
 
 void bli_thread_get_range_sub
@@ -953,6 +960,7 @@ typedef struct
     obj_t*    beta;
     obj_t*    c;
     cntx_t*   cntx;
+    rntm_t*   rntm;
     cntl_t*   cntl;
 } l3_thrinfo_t;
 
@@ -978,7 +986,7 @@ void bli_l3_thread_decorator_int
 
     // Create the root node of the current thread's thrinfo_t structure.
     thrinfo_t* glb_thread = bli_thrinfo_create( comm, FALSE, NULL );
-    thrinfo_t* thread = bli_thrinfo_create_for_cntl( thrinfo->cntx,
+    thrinfo_t* thread = bli_thrinfo_create_for_cntl( thrinfo->rntm,
                                                      cntl_use,
                                                      glb_thread );
 
@@ -1004,6 +1012,7 @@ void bli_l3_thread_decorator_int
      thrinfo->beta,
      &c_t,
      thrinfo->cntx,
+     thrinfo->rntm,
      cntl_use,
      thread
     );
@@ -1035,6 +1044,7 @@ void bli_l3_thread_decorator
     obj_t*    beta,
     obj_t*    c,
     cntx_t*   cntx,
+    rntm_t*   rntm,
     cntl_t*   cntl
 )
 {
@@ -1048,9 +1058,10 @@ void bli_l3_thread_decorator
     info.beta = beta;
     info.c = c;
     info.cntx = cntx;
+    info.rntm = rntm;
     info.cntl = cntl;
 
-    dim_t n_threads = bli_cntx_get_num_threads( cntx );
+    dim_t n_threads = bli_rntm_num_threads( rntm );
 
     tci_parallelize( bli_l3_thread_decorator_int, &info, n_threads, 0 );
 }
@@ -1081,31 +1092,7 @@ dim_t bli_thread_get_env( const char* env, dim_t fallback )
 	return r_val;
 }
 
-dim_t bli_thread_get_jc_nt( void )
-{
-	return bli_thread_get_env( "BLIS_JC_NT", 1 );
-}
-
-dim_t bli_thread_get_ic_nt( void )
-{
-	return bli_thread_get_env( "BLIS_IC_NT", 1 );
-}
-
-dim_t bli_thread_get_jr_nt( void )
-{
-	return bli_thread_get_env( "BLIS_JR_NT", 1 );
-}
-
-dim_t bli_thread_get_ir_nt( void )
-{
-	return bli_thread_get_env( "BLIS_IR_NT", 1 );
-}
-
-dim_t bli_thread_get_num_threads( void )
-{
-	return bli_thread_get_env( "BLIS_NUM_THREADS", 1 );
-}
-
+#if 0
 void bli_thread_set_env( const char* env, dim_t value )
 {
 	dim_t       r_val;
@@ -1135,28 +1122,167 @@ void bli_thread_set_env( const char* env, dim_t value )
 		bli_print_msg( err_str, __FILE__, __LINE__ );
 	}
 }
+#endif
 
-void bli_thread_set_jc_nt( dim_t value )
+// -----------------------------------------------------------------------------
+
+dim_t bli_thread_get_jc_nt( void )
 {
-	bli_thread_set_env( "BLIS_JC_NT", value );
+	// We must ensure that global_rntm has been initialized.
+	bli_init_once();
+
+	return bli_rntm_jc_ways( &global_rntm );
 }
 
-void bli_thread_set_ic_nt( dim_t value )
+dim_t bli_thread_get_pc_nt( void )
 {
-	bli_thread_set_env( "BLIS_IC_NT", value );
+	// We must ensure that global_rntm has been initialized.
+	bli_init_once();
+
+	return bli_rntm_pc_ways( &global_rntm );
 }
 
-void bli_thread_set_jr_nt( dim_t value )
+dim_t bli_thread_get_ic_nt( void )
 {
-	bli_thread_set_env( "BLIS_JR_NT", value );
+	// We must ensure that global_rntm has been initialized.
+	bli_init_once();
+
+	return bli_rntm_ic_ways( &global_rntm );
 }
 
-void bli_thread_set_ir_nt( dim_t value )
+dim_t bli_thread_get_jr_nt( void )
 {
-	bli_thread_set_env( "BLIS_IR_NT", value );
+	// We must ensure that global_rntm has been initialized.
+	bli_init_once();
+
+	return bli_rntm_jr_ways( &global_rntm );
 }
 
-void bli_thread_set_num_threads( dim_t value )
+dim_t bli_thread_get_ir_nt( void )
 {
-	bli_thread_set_env( "BLIS_NUM_THREADS", value );
+	// We must ensure that global_rntm has been initialized.
+	bli_init_once();
+
+	return bli_rntm_ir_ways( &global_rntm );
+}
+
+dim_t bli_thread_get_num_threads( void )
+{
+	// We must ensure that global_rntm has been initialized.
+	bli_init_once();
+
+	return bli_rntm_num_threads( &global_rntm );
+}
+
+// ----------------------------------------------------------------------------
+
+void bli_thread_set_ways( dim_t jc, dim_t pc, dim_t ic, dim_t jr, dim_t ir )
+{
+	// We must ensure that global_rntm_mutex has been initialized.
+	bli_init_once();
+
+	// Acquire the mutex protecting global_rntm.
+	bli_mutex_lock( &global_rntm_mutex );
+
+	bli_rntm_set_ways_only( jc, pc, ic, jr, ir, &global_rntm );
+
+	// Release the mutex protecting global_rntm.
+	bli_mutex_unlock( &global_rntm_mutex );
+}
+
+void bli_thread_set_num_threads( dim_t n_threads )
+{
+	// We must ensure that global_rntm_mutex has been initialized.
+	bli_init_once();
+
+	// Acquire the mutex protecting global_rntm.
+	bli_mutex_lock( &global_rntm_mutex );
+
+	bli_rntm_set_num_threads_only( n_threads, &global_rntm );
+
+	// Release the mutex protecting global_rntm.
+	bli_mutex_unlock( &global_rntm_mutex );
+}
+
+// ----------------------------------------------------------------------------
+
+void bli_thread_init_rntm( rntm_t* rntm )
+{
+	// Acquire the mutex protecting global_rntm.
+	bli_mutex_lock( &global_rntm_mutex );
+
+	*rntm = global_rntm;
+
+	// Release the mutex protecting global_rntm.
+	bli_mutex_unlock( &global_rntm_mutex );
+}
+
+// ----------------------------------------------------------------------------
+
+void bli_thread_init_rntm_from_env
+     (
+       rntm_t* rntm
+     )
+{
+	// NOTE: We don't need to acquire the global_rntm_mutex here because this
+	// function is only called from bli_thread_init(), which is only called
+	// by bli_init_once().
+
+	dim_t nt;
+	dim_t jc, pc, ic, jr, ir;
+
+#ifdef BLIS_ENABLE_MULTITHREADING
+
+	// Try to read BLIS_NUM_THREADS first.
+	nt = bli_thread_get_env( "BLIS_NUM_THREADS", -1 );
+
+	// If BLIS_NUM_THREADS was not set, try to read OMP_NUM_THREADS.
+	if ( nt == -1 )
+		nt = bli_thread_get_env( "OMP_NUM_THREADS", -1 );
+
+	// Read the environment variables for the number of threads (ways
+	// of parallelism) for each individual loop.
+	jc = bli_thread_get_env( "BLIS_JC_NT", -1 );
+	pc = bli_thread_get_env( "BLIS_PC_NT", -1 );
+	ic = bli_thread_get_env( "BLIS_IC_NT", -1 );
+	jr = bli_thread_get_env( "BLIS_JR_NT", -1 );
+	ir = bli_thread_get_env( "BLIS_IR_NT", -1 );
+
+	// If any BLIS_*_NT environment variable was set, then we ignore the
+	// value of BLIS_NUM_THREADS or OMP_NUM_THREADS and use the
+	// BLIS_*_NT values instead (with unset variables being assumed to
+	// contain 1).
+	if ( jc != -1 || pc != -1 || ic != -1 || jr != -1 || ir != -1 )
+	{
+		if ( jc == -1 ) jc = 1;
+		if ( pc == -1 ) pc = 1;
+		if ( ic == -1 ) ic = 1;
+		if ( jr == -1 ) jr = 1;
+		if ( ir == -1 ) ir = 1;
+
+		// Unset the value for nt.
+		nt = -1;
+	}
+
+	// By this time, either nt is set and the ways for each loop
+	// are all unset, OR nt is unset and the ways for each loop
+	// are all set.
+
+#else
+
+	// When multithreading is disabled, always set the rntm_t ways
+	// values to 1.
+	nt = -1;
+	jc = pc = ic = jr = ir = 1;
+
+#endif
+
+	// Save the results back in the runtime object.
+	bli_rntm_set_num_threads_only( nt, rntm );
+	bli_rntm_set_ways_only( jc, pc, ic, jr, ir, rntm );
+
+#if 0
+	printf( "bli_thread_init_rntm_from_env()\n" );
+	bli_rntm_print( rntm );
+#endif
 }

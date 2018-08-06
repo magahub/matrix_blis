@@ -235,7 +235,7 @@ void PASTEMAC(ch,varname) \
 		if ( bli_intersects_diag_n( diagoffc_i, *m_panel_full, *n_panel_full ) && \
 		     bli_is_upper_or_lower( uploc ) ) \
 		{ \
-			PASTEMAC(ch,scal2m) \
+			PASTEMAC2(ch,scal2m,BLIS_TAPI_EX_SUF) \
 			( \
 			  diagoffc_i, \
 			  diagc, \
@@ -246,7 +246,8 @@ void PASTEMAC(ch,varname) \
 			  one, \
 			  p_begin, rs_p, cs_p, \
 			  c_begin, rs_c, cs_c, \
-			  cntx  \
+			  cntx, \
+			  NULL  \
 			); \
 		} \
 		else \

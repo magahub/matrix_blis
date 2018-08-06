@@ -66,11 +66,12 @@ void PASTEF77(ch,blasname) \
 	bli_convert_blas_incv( n0, (ftype*)y, *incy, y0, incy0 ); \
 \
 	/* Call BLIS interface. */ \
-	PASTEMAC(ch,blisname) \
+	PASTEMAC2(ch,blisname,BLIS_TAPI_EX_SUF) \
 	( \
 	  n0, \
 	  x0, incx0, \
 	  y0, incy0, \
+	  NULL, \
 	  NULL  \
 	); \
 \

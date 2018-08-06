@@ -75,6 +75,7 @@ extern "C" {
 #include "bli_func.h"
 #include "bli_mbool.h"
 #include "bli_cntx.h"
+#include "bli_rntm.h"
 
 
 // -- Threading definitions --
@@ -187,6 +188,10 @@ extern "C" {
 // -- CBLAS compatibility layer --
 
 #include "bli_cblas.h"
+
+// -- Windows definitions
+
+#include "bli_winsys.h"
 
 
 // End extern "C" construct block.

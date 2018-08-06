@@ -40,6 +40,7 @@ typedef struct
     obj_t* b;
     obj_t* c;
     cntx_t* cntx;
+    rntm_t* rntm;
     cntl_t* cntl;
     thrinfo_t* thread;
 } trsm_params;
@@ -88,6 +89,7 @@ static void bli_trsm_blk_var3_thread( tci_comm* comm,
 		  &BLIS_ONE,
 		  param->c,
 		  param->cntx,
+		  param->rntm,
 		  bli_cntl_sub_node( param->cntl ),
 		  bli_thrinfo_sub_node( param->thread )
 		);
@@ -112,6 +114,7 @@ void bli_trsm_blk_var3
        obj_t*  b,
        obj_t*  c,
        cntx_t* cntx,
+       rntm_t* rntm,
        cntl_t* cntl,
        thrinfo_t* thread
      )
@@ -125,6 +128,7 @@ void bli_trsm_blk_var3
     param.b = b;
     param.c = c;
     param.cntx = cntx;
+    param.rntm = rntm;
     param.cntl = cntl;
     param.thread = thread;
 

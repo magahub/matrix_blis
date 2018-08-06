@@ -48,7 +48,8 @@ void PASTEMAC(ch,varname) \
        dim_t    n, \
        ctype*   x, inc_t incx, \
        ctype_r* asum, \
-       cntx_t*  cntx  \
+       cntx_t*  cntx, \
+       rntm_t*  rntm  \
      ) \
 { \
 	ctype*   chi1; \
@@ -91,7 +92,8 @@ void PASTEMAC(ch,varname) \
        uplo_t  uploa, \
        dim_t   m, \
        ctype*  a, inc_t rs_a, inc_t cs_a, \
-       cntx_t* cntx  \
+       cntx_t* cntx, \
+       rntm_t* rntm  \
      ) \
 { \
 	ctype_r* zeror = PASTEMAC(chr,0); \
@@ -108,7 +110,7 @@ void PASTEMAC(ch,varname) \
 	/* We will be reflecting the stored region over the diagonal into the
 	   unstored region, so a transposition is necessary. Furthermore, since
 	   we are creating a Hermitian matrix, we must also conjugate. */ \
-	PASTEMAC(ch,copym) \
+	PASTEMAC2(ch,copym,BLIS_TAPI_EX_SUF) \
 	( \
 	  diagoffa, \
 	  BLIS_NONUNIT_DIAG, \
@@ -118,18 +120,20 @@ void PASTEMAC(ch,varname) \
 	  m, \
 	  a, rs_a, cs_a, \
 	  a, rs_a, cs_a, \
-	  cntx  \
+	  cntx, \
+	  rntm  \
 	); \
 \
 	/* Set the imaginary parts of the diagonal elements to zero. */ \
-	PASTEMAC(ch,setid) \
+	PASTEMAC2(ch,setid,BLIS_TAPI_EX_SUF) \
 	( \
 	  0, \
 	  m, \
 	  m, \
 	  zeror, \
 	  a, rs_a, cs_a, \
-	  cntx  \
+	  cntx, \
+	  rntm  \
 	); \
 }
 
@@ -144,7 +148,8 @@ void PASTEMAC(ch,varname) \
        uplo_t  uploa, \
        dim_t   m, \
        ctype*  a, inc_t rs_a, inc_t cs_a, \
-       cntx_t* cntx  \
+       cntx_t* cntx, \
+       rntm_t* rntm  \
      ) \
 { \
 	doff_t  diagoffa; \
@@ -159,7 +164,7 @@ void PASTEMAC(ch,varname) \
 \
 	/* We will be reflecting the stored region over the diagonal into the
 	   unstored region, so a transposition is necessary. */ \
-	PASTEMAC(ch,copym) \
+	PASTEMAC2(ch,copym,BLIS_TAPI_EX_SUF) \
 	( \
 	  diagoffa, \
 	  BLIS_NONUNIT_DIAG, \
@@ -169,7 +174,8 @@ void PASTEMAC(ch,varname) \
 	  m, \
 	  a, rs_a, cs_a, \
 	  a, rs_a, cs_a, \
-	  cntx  \
+	  cntx, \
+	  rntm  \
 	); \
 }
 
@@ -184,7 +190,8 @@ void PASTEMAC(ch,varname) \
        uplo_t  uploa, \
        dim_t   m, \
        ctype*  a, inc_t rs_a, inc_t cs_a, \
-       cntx_t* cntx  \
+       cntx_t* cntx, \
+       rntm_t* rntm  \
      ) \
 { \
 	ctype*  zero = PASTEMAC(ch,0); \
@@ -202,7 +209,7 @@ void PASTEMAC(ch,varname) \
 	else /*if ( bli_is_lower( uploa ) )*/ diagoffa = -1; \
 \
 	/* Set the unstored triangle to zero. */ \
-	PASTEMAC(ch,setm) \
+	PASTEMAC2(ch,setm,BLIS_TAPI_EX_SUF) \
 	( \
 	  BLIS_NO_CONJUGATE, \
 	  diagoffa, \
@@ -212,7 +219,8 @@ void PASTEMAC(ch,varname) \
 	  m, \
 	  zero, \
 	  a, rs_a, cs_a, \
-	  cntx  \
+	  cntx, \
+	  rntm  \
 	); \
 }
 
@@ -227,7 +235,8 @@ void PASTEMAC(ch,varname) \
        dim_t    n, \
        ctype*   x, inc_t incx, \
        ctype_r* norm, \
-       cntx_t*  cntx  \
+       cntx_t*  cntx, \
+       rntm_t*  rntm  \
      ) \
 { \
 	ctype*   chi1; \
@@ -264,7 +273,8 @@ void PASTEMAC(ch,varname) \
        dim_t    n, \
        ctype*   x, inc_t incx, \
        ctype_r* norm, \
-       cntx_t*  cntx  \
+       cntx_t*  cntx, \
+       rntm_t*  rntm  \
      ) \
 { \
 	ctype_r* zero       = PASTEMAC(chr,0); \
@@ -284,7 +294,8 @@ void PASTEMAC(ch,varname) \
 	  x, incx, \
 	  &scale, \
 	  &sumsq, \
-	  cntx  \
+	  cntx, \
+	  rntm  \
 	); \
 \
 	/* Compute: norm = scale * sqrt( sumsq ) */ \
@@ -308,7 +319,8 @@ void PASTEMAC(ch,varname) \
        dim_t    n, \
        ctype*   x, inc_t incx, \
        ctype_r* norm, \
-       cntx_t*  cntx  \
+       cntx_t*  cntx, \
+       rntm_t*  rntm  \
      ) \
 { \
 	ctype_r* zero       = PASTEMAC(chr,0); \
@@ -337,7 +349,7 @@ void PASTEMAC(ch,varname) \
 \
 		feclearexcept( FE_ALL_EXCEPT );\
 \
-		PASTEMAC(ch,dotv)\
+		PASTEMAC2(ch,dotv,BLIS_TAPI_EX_SUF) \
 		( \
 		  BLIS_NO_CONJUGATE, \
 		  BLIS_NO_CONJUGATE, \
@@ -345,7 +357,8 @@ void PASTEMAC(ch,varname) \
 		  x, incx, \
 		  x, incx, \
 		  &sumsqc, \
-		  cntx  \
+		  cntx, \
+		  rntm  \
 		); \
 \
 		PASTEMAC2(ch,chr,copys)( sumsqc, sumsq ); \
@@ -366,7 +379,8 @@ void PASTEMAC(ch,varname) \
 	  x, incx, \
 	  &scale, \
 	  &sumsq, \
-	  cntx  \
+	  cntx, \
+	  rntm  \
 	); \
 \
 	/* Compute: norm = scale * sqrt( sumsq ) */ \
@@ -384,7 +398,8 @@ void PASTEMAC(ch,varname) \
        dim_t    n, \
        ctype*   x, inc_t incx, \
        ctype_r* norm, \
-       cntx_t*  cntx  \
+       cntx_t*  cntx, \
+       rntm_t*  rntm  \
      ) \
 { \
 	ctype_r* zero       = PASTEMAC(chr,0); \
@@ -405,7 +420,8 @@ void PASTEMAC(ch,varname) \
 	  x, incx, \
 	  &scale, \
 	  &sumsq, \
-	  cntx  \
+	  cntx, \
+	  rntm  \
 	); \
 \
 	/* Compute: norm = scale * sqrt( sumsq ) */ \
@@ -428,7 +444,8 @@ void PASTEMAC(ch,varname) \
        dim_t    n, \
        ctype*   x, inc_t incx, \
        ctype_r* norm, \
-       cntx_t*  cntx  \
+       cntx_t*  cntx, \
+       rntm_t*  rntm  \
      ) \
 { \
 	ctype*   chi1; \
@@ -477,7 +494,8 @@ void PASTEMAC(ch,varname) \
        dim_t    n, \
        ctype*   x, inc_t rs_x, inc_t cs_x, \
        ctype_r* norm, \
-       cntx_t*  cntx  \
+       cntx_t*  cntx, \
+       rntm_t*  rntm  \
      ) \
 { \
 	ctype*   one       = PASTEMAC(ch,1); \
@@ -536,7 +554,8 @@ void PASTEMAC(ch,varname) \
 			  n_elem, \
 			  x0, incx, \
 			  &absum_j, \
-			  cntx  \
+			  cntx, \
+			  rntm  \
 			); \
 \
 			/* If absum_j is greater than the previous maximum value,
@@ -564,7 +583,8 @@ void PASTEMAC(ch,varname) \
 				  n_elem - 1, \
 				  x0, incx, \
 				  &absum_j, \
-				  cntx  \
+				  cntx, \
+				  rntm  \
 				); \
 \
 				if ( bli_is_unit_diag( diagx ) ) chi1 = one; \
@@ -598,7 +618,8 @@ void PASTEMAC(ch,varname) \
 				  n_elem - 1, \
 				  x2, incx, \
 				  &absum_j, \
-				  cntx  \
+				  cntx, \
+				  rntm  \
 				); \
 \
 				if ( bli_is_unit_diag( diagx ) ) chi1 = one; \
@@ -637,7 +658,8 @@ void PASTEMAC(ch,varname) \
        dim_t    n, \
        ctype*   x, inc_t rs_x, inc_t cs_x, \
        ctype_r* norm, \
-       cntx_t*  cntx  \
+       cntx_t*  cntx, \
+       rntm_t*  rntm  \
      ) \
 { \
 	ctype*   one    = PASTEMAC(ch,1); \
@@ -700,7 +722,8 @@ void PASTEMAC(ch,varname) \
 			  x0, incx, \
 			  &scale, \
 			  &sumsq, \
-			  cntx  \
+			  cntx, \
+			  rntm  \
 			); \
 		} \
 	} \
@@ -722,7 +745,8 @@ void PASTEMAC(ch,varname) \
 				  x0, incx, \
 				  &scale, \
 				  &sumsq, \
-				  cntx  \
+				  cntx, \
+				  rntm  \
 				); \
 \
 				if ( bli_is_unit_diag( diagx ) ) chi1 = one; \
@@ -735,7 +759,8 @@ void PASTEMAC(ch,varname) \
 				  chi1, incx, \
 				  &scale, \
 				  &sumsq, \
-				  cntx  \
+				  cntx, \
+				  rntm  \
 				); \
 			} \
 		} \
@@ -756,7 +781,8 @@ void PASTEMAC(ch,varname) \
 				  x2, incx, \
 				  &scale, \
 				  &sumsq, \
-				  cntx  \
+				  cntx, \
+				  rntm  \
 				); \
 \
 				if ( bli_is_unit_diag( diagx ) ) chi1 = one; \
@@ -769,7 +795,8 @@ void PASTEMAC(ch,varname) \
 				  chi1, incx, \
 				  &scale, \
 				  &sumsq, \
-				  cntx  \
+				  cntx, \
+				  rntm  \
 				); \
 			} \
 		} \
@@ -798,7 +825,8 @@ void PASTEMAC(ch,varname) \
        dim_t    n, \
        ctype*   x, inc_t rs_x, inc_t cs_x, \
        ctype_r* norm, \
-       cntx_t*  cntx  \
+       cntx_t*  cntx, \
+       rntm_t*  rntm  \
      ) \
 { \
 	/* Induce a transposition so that rows become columns. */ \
@@ -819,7 +847,8 @@ void PASTEMAC(ch,varname) \
 	  n, \
 	  x, rs_x, cs_x, \
 	  norm, \
-	  cntx  \
+	  cntx, \
+	  rntm  \
 	); \
 }
 
@@ -912,7 +941,8 @@ void PASTEMAC(ch,varname) \
      ( \
        dim_t   n, \
        ctype*  x, inc_t incx, \
-       cntx_t* cntx  \
+       cntx_t* cntx, \
+       rntm_t* rntm  \
      ) \
 { \
 	ctype* chi1; \
@@ -942,7 +972,8 @@ void PASTEMAC(ch,varname) \
        dim_t   m, \
        dim_t   n, \
        ctype*  x, inc_t rs_x, inc_t cs_x, \
-       cntx_t* cntx  \
+       cntx_t* cntx, \
+       rntm_t* rntm  \
      ) \
 { \
 	ctype*  one = PASTEMAC(ch,1); \
@@ -981,11 +1012,12 @@ void PASTEMAC(ch,varname) \
 \
 			x1     = x + (j  )*ldx + (0  )*incx; \
 \
-			PASTEMAC(ch,kername) \
+			PASTEMAC2(ch,kername,BLIS_TAPI_EX_SUF) \
 			( \
 			  n_elem, \
 			  x1, incx, \
-			  cntx  \
+			  cntx, \
+			  rntm  \
 			); \
 		} \
 	} \
@@ -1007,11 +1039,12 @@ void PASTEMAC(ch,varname) \
 				x0     = x1; \
 				chi1   = x1 + (n_elem-1)*incx; \
 \
-				PASTEMAC(ch,kername) \
+				PASTEMAC2(ch,kername,BLIS_TAPI_EX_SUF) \
 				( \
 				  n_elem, \
 				  x1, incx, \
-				  cntx  \
+				  cntx, \
+				  rntm  \
 				); \
 \
 				( void )x0; \
@@ -1046,11 +1079,12 @@ void PASTEMAC(ch,varname) \
 				x2     = x1 + incx; \
 				chi1   = x1; \
 \
-				PASTEMAC(ch,kername) \
+				PASTEMAC2(ch,kername,BLIS_TAPI_EX_SUF) \
 				( \
 				  n_elem, \
 				  x1, incx, \
-				  cntx  \
+				  cntx, \
+				  rntm  \
 				); \
 \
 				( void )x2; \
@@ -1090,7 +1124,8 @@ void PASTEMAC(ch,varname) \
        ctype*   x, inc_t incx, \
        ctype_r* scale, \
        ctype_r* sumsq, \
-       cntx_t*  cntx  \
+       cntx_t*  cntx, \
+       rntm_t*  rntm  \
      ) \
 { \
 	const ctype_r zero_r = *PASTEMAC(chr,0); \

@@ -42,6 +42,10 @@
 // Include some operation-specific thrinfo_t prototypes.
 #include "bli_l3_thrinfo.h"
 
+#ifdef _MSC_VER
+#define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
+#endif
+
 // Thread range-related prototypes.
 void bli_thread_get_range_sub
      (
@@ -141,6 +145,7 @@ typedef void (*l3int_t)
        obj_t*     beta,
        obj_t*     c,
        cntx_t*    cntx,
+       rntm_t*    rntm,
        cntl_t*    cntl,
        thrinfo_t* thread
      );
@@ -148,34 +153,40 @@ typedef void (*l3int_t)
 // Level-3 thread decorator prototype
 void bli_l3_thread_decorator
      (
-         l3int_t   func,
-         opid_t    family,
-         obj_t*    alpha,
-         obj_t*    a,
-         obj_t*    b,
-         obj_t*    beta,
-         obj_t*    c,
-         cntx_t*   cntx,
-         cntl_t*   cntl
+       l3int_t func,
+       opid_t  family,
+       obj_t*  alpha,
+       obj_t*  a,
+       obj_t*  b,
+       obj_t*  beta,
+       obj_t*  c,
+       cntx_t* cntx,
+       rntm_t* rntm,
+       cntl_t* cntl
      );
 
 // -----------------------------------------------------------------------------
 
 dim_t bli_thread_get_env( const char* env, dim_t fallback );
+//void  bli_thread_set_env( const char* env, dim_t value );
 
 dim_t bli_thread_get_jc_nt( void );
+dim_t bli_thread_get_pc_nt( void );
 dim_t bli_thread_get_ic_nt( void );
 dim_t bli_thread_get_jr_nt( void );
 dim_t bli_thread_get_ir_nt( void );
 dim_t bli_thread_get_num_threads( void );
 
-void  bli_thread_set_env( const char* env, dim_t value );
-
 void  bli_thread_set_jc_nt( dim_t value );
+void  bli_thread_set_pc_nt( dim_t value );
 void  bli_thread_set_ic_nt( dim_t value );
 void  bli_thread_set_jr_nt( dim_t value );
 void  bli_thread_set_ir_nt( dim_t value );
 void  bli_thread_set_num_threads( dim_t value );
+
+void  bli_thread_init_rntm( rntm_t* rntm );
+
+void  bli_thread_init_rntm_from_env( rntm_t* rntm );
 
 #endif
 

@@ -112,7 +112,7 @@ void PASTEF77(ch,blasname) \
 	cs_c = *ldc; \
 \
 	/* Call BLIS interface. */ \
-	PASTEMAC(ch,blisname) \
+	PASTEMAC2(ch,blisname,BLIS_TAPI_EX_SUF) \
 	( \
 	  blis_uploc, \
 	  blis_transa, \
@@ -124,6 +124,7 @@ void PASTEF77(ch,blasname) \
 	  (ftype*)b, rs_b, cs_b, \
 	  (ftype_r*)beta, \
 	  (ftype*)c, rs_c, cs_c, \
+	  NULL, \
 	  NULL  \
 	); \
 \

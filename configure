@@ -106,6 +106,13 @@ print_usage()
 	echo "                 Enable (disabled by default) verbose compilation output"
 	echo "                 during make."
 	echo " "
+	echo "   --enable-arg-max-hack --disable-arg-max-hack"
+	echo " "
+	echo "                 Enable (disabled by default) build system logic that"
+	echo "                 will allow archiving/linking the static/shared library"
+	echo "                 even if the command plus command line arguments exceeds"
+	echo "                 the operating system limit (ARG_MAX)."
+	echo " "
 	echo "   --disable-static, --enable-static"
 	echo " "
 	echo "                 Disable (enabled by default) building BLIS as a static"
@@ -945,7 +952,7 @@ auto_detect()
 	# Set the linker flags. We need pthreads because it is needed for
 	# parts of bli_arch.c unrelated to bli_arch_string(), which is called
 	# by the main() function in ${main_c}.
-	ldflags="-lpthread"
+	ldflags="${LIBPTHREAD:--lpthread}"
 
 	# Compile the auto-detect program using source code inside the
 	# framework.
@@ -1058,7 +1065,7 @@ echoerr_unsupportedcc()
 
 get_binutils_version()
 {
-	binutil="as"
+	binutil=${AS:-as}
 
 	# Query the full binutils version string output. This includes the
 	# version string along with (potentially) a bunch of other textual
@@ -1557,6 +1564,7 @@ main()
 
 	# Additional flags.
 	enable_verbose='no'
+	enable_arg_max_hack='no'
 	enable_static='yes'
 	enable_shared='yes'
 	enable_packbuf_pools='yes'
@@ -1638,6 +1646,12 @@ main()
 						;;
 					disable-verbose-make)
 						enable_verbose='no'
+						;;
+					enable-arg-max-hack)
+						enable_arg_max_hack='yes'
+						;;
+					disable-arg-max-hack)
+						enable_arg_max_hack='no'
 						;;
 					enable-static)
 						enable_static='yes'
@@ -2306,6 +2320,13 @@ main()
 		echo "${script_name}: disabling verbose make output. (enable with 'make V=1'.)"
 	fi
 
+	# Check if the ARG_MAX hack was requested.
+	if [ "x${enable_arg_max_hack}" = "xyes" ]; then
+		echo "${script_name}: enabling ARG_MAX hack."
+	else
+		echo "${script_name}: disabling ARG_MAX hack."
+	fi
+
 	# Check if the static lib flag was specified.
 	if   [ "x${enable_static}" = "xyes" -a "x${enable_shared}" = "xyes" ]; then
 		echo "${script_name}: building BLIS as both static and shared libraries."
@@ -2421,6 +2442,8 @@ main()
 	# For RANLIB, if the variable is not set, we use a default value of
 	# 'ranlib'.
 	ranlib_esc=$(echo "${RANLIB:-ranlib}" | sed 's/\//\\\//g')
+	cflags_preset_esc=$(echo "${cflags_preset}" | sed 's/\//\\\//g')
+	ldflags_preset_esc=$(echo "${ldflags_preset}" | sed 's/\//\\\//g')
 
 	# Create a #define for the configuration family (config_name).
 	uconf=$(echo ${config_name} | tr '[:lower:]' '[:upper:]')
@@ -2494,14 +2517,15 @@ main()
 		| sed -e "s/@CC@/${cc_esc}/g" \
 		| sed -e "s/@CXX@/${cxx_esc}/g" \
 		| sed -e "s/@RANLIB@/${ranlib_esc}/g" \
-		| sed -e "s/@cflags_preset@/${cflags_preset}/g" \
-        | sed -e "s/@ldflags_preset@/${ldflags_preset}/g" \
+		| sed -e "s/@cflags_preset@/${cflags_preset_esc}/g" \
+		| sed -e "s/@ldflags_preset@/${ldflags_preset_esc}/g" \
         | sed -e "s/@tci_ldflags@/${tci_ldflags}/g" \
 		| sed -e "s/@debug_type@/${debug_type}/g" \
 		| sed -e "s/@install_libdir@/${install_libdir_esc}/g" \
 		| sed -e "s/@install_incdir@/${install_incdir_esc}/g" \
 		| sed -e "s/@enable_verbose@/${enable_verbose}/g" \
 		| sed -e "s/@configured_oot@/${configured_oot}/g" \
+		| sed -e "s/@enable_arg_max_hack@/${enable_arg_max_hack}/g" \
 		| sed -e "s/@enable_static@/${enable_static}/g" \
 		| sed -e "s/@enable_shared@/${enable_shared}/g" \
 		| sed -e "s/@enable_blas@/${enable_blas}/g" \

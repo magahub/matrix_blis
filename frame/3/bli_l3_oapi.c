@@ -50,12 +50,12 @@ void PASTEMAC(opname,EX_SUF) \
        obj_t*  b, \
        obj_t*  beta, \
        obj_t*  c  \
-       BLIS_OAPI_CNTX_PARAM  \
+       BLIS_OAPI_EX_PARAMS  \
      ) \
 { \
 	bli_init_once(); \
 \
-	BLIS_OAPI_CNTX_DECL \
+	BLIS_OAPI_EX_DECLS \
 \
 	/* Only proceed with an induced method if all operands have the same
 	   (complex) datatype. If any datatypes differ, skip the induced method
@@ -70,11 +70,11 @@ void PASTEMAC(opname,EX_SUF) \
 		   that is available (ie: implemented and enabled), and if none are
 		   enabled, it calls native execution. (For real problems, it calls
 		   the operation's native execution interface.) */ \
-		PASTEMAC(opname,ind)( alpha, a, b, beta, c, cntx ); \
+		PASTEMAC(opname,ind)( alpha, a, b, beta, c, cntx, rntm ); \
 	} \
 	else \
 	{ \
-		PASTEMAC(opname,nat)( alpha, a, b, beta, c, cntx ); \
+		PASTEMAC(opname,nat)( alpha, a, b, beta, c, cntx, rntm ); \
 	} \
 }
 
@@ -94,12 +94,12 @@ void PASTEMAC(opname,EX_SUF) \
        obj_t*  b, \
        obj_t*  beta, \
        obj_t*  c  \
-       BLIS_OAPI_CNTX_PARAM  \
+       BLIS_OAPI_EX_PARAMS  \
      ) \
 { \
 	bli_init_once(); \
 \
-	BLIS_OAPI_CNTX_DECL \
+	BLIS_OAPI_EX_DECLS \
 \
 	/* Only proceed with an induced method if all operands have the same
 	   (complex) datatype. If any datatypes differ, skip the induced method
@@ -114,11 +114,11 @@ void PASTEMAC(opname,EX_SUF) \
 		   that is available (ie: implemented and enabled), and if none are
 		   enabled, it calls native execution. (For real problems, it calls
 		   the operation's native execution interface.) */ \
-		PASTEMAC(opname,ind)( side, alpha, a, b, beta, c, cntx ); \
+		PASTEMAC(opname,ind)( side, alpha, a, b, beta, c, cntx, rntm ); \
 	} \
 	else \
 	{ \
-		PASTEMAC(opname,nat)( side, alpha, a, b, beta, c, cntx ); \
+		PASTEMAC(opname,nat)( side, alpha, a, b, beta, c, cntx, rntm ); \
 	} \
 }
 
@@ -136,12 +136,12 @@ void PASTEMAC(opname,EX_SUF) \
        obj_t*  a, \
        obj_t*  beta, \
        obj_t*  c  \
-       BLIS_OAPI_CNTX_PARAM  \
+       BLIS_OAPI_EX_PARAMS  \
      ) \
 { \
 	bli_init_once(); \
 \
-	BLIS_OAPI_CNTX_DECL \
+	BLIS_OAPI_EX_DECLS \
 \
 	/* Only proceed with an induced method if all operands have the same
 	   (complex) datatype. If any datatypes differ, skip the induced method
@@ -155,11 +155,11 @@ void PASTEMAC(opname,EX_SUF) \
 		   that is available (ie: implemented and enabled), and if none are
 		   enabled, it calls native execution. (For real problems, it calls
 		   the operation's native execution interface.) */ \
-		PASTEMAC(opname,ind)( alpha, a, beta, c, cntx ); \
+		PASTEMAC(opname,ind)( alpha, a, beta, c, cntx, rntm ); \
 	} \
 	else \
 	{ \
-		PASTEMAC(opname,nat)( alpha, a, beta, c, cntx ); \
+		PASTEMAC(opname,nat)( alpha, a, beta, c, cntx, rntm ); \
 	} \
 }
 
@@ -176,12 +176,12 @@ void PASTEMAC(opname,EX_SUF) \
        obj_t*  alpha, \
        obj_t*  a, \
        obj_t*  b  \
-       BLIS_OAPI_CNTX_PARAM  \
+       BLIS_OAPI_EX_PARAMS  \
      ) \
 { \
 	bli_init_once(); \
 \
-	BLIS_OAPI_CNTX_DECL \
+	BLIS_OAPI_EX_DECLS \
 \
 	/* Only proceed with an induced method if all operands have the same
 	   (complex) datatype. If any datatypes differ, skip the induced method
@@ -195,11 +195,11 @@ void PASTEMAC(opname,EX_SUF) \
 		   that is available (ie: implemented and enabled), and if none are
 		   enabled, it calls native execution. (For real problems, it calls
 		   the operation's native execution interface.) */ \
-		PASTEMAC(opname,ind)( side, alpha, a, b, cntx ); \
+		PASTEMAC(opname,ind)( side, alpha, a, b, cntx, rntm ); \
 	} \
 	else \
 	{ \
-		PASTEMAC(opname,nat)( side, alpha, a, b, cntx ); \
+		PASTEMAC(opname,nat)( side, alpha, a, b, cntx, rntm ); \
 	} \
 }
 

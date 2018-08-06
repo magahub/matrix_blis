@@ -70,11 +70,12 @@ f77_int PASTEF772(i,chx,blasname) \
 	bli_convert_blas_incv( n0, (ftype_x*)x, *incx, x0, incx0 ); \
 \
 	/* Call BLIS interface. */ \
-	PASTEMAC(chx,blisname) \
+	PASTEMAC2(chx,blisname,BLIS_TAPI_EX_SUF) \
 	( \
 	  n0, \
 	  x0, incx0, \
 	  &bli_index, \
+	  NULL, \
 	  NULL  \
 	); \
 \

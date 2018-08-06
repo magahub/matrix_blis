@@ -97,7 +97,7 @@ void PASTEF77(ch,blasname) \
 	cs_b = *ldb; \
 \
 	/* Call BLIS interface. */ \
-	PASTEMAC(ch,blisname) \
+	PASTEMAC2(ch,blisname,BLIS_TAPI_EX_SUF) \
 	( \
 	  blis_side, \
 	  blis_uploa, \
@@ -108,6 +108,7 @@ void PASTEF77(ch,blasname) \
 	  (ftype*)alpha, \
 	  (ftype*)a, rs_a, cs_a, \
 	  (ftype*)b, rs_b, cs_b, \
+	  NULL, \
 	  NULL  \
 	); \
 \

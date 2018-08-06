@@ -159,14 +159,14 @@ void bli_thrinfo_init_single
 
 thrinfo_t* bli_thrinfo_create_for_cntl
      (
-       cntx_t*    cntx,
-       cntl_t*    cntl_chl,
+       rntm_t*    rntm,
+       cntl_t*    cntl,
        thrinfo_t* thread_par
      );
 
 void bli_thrinfo_grow
      (
-       cntx_t*    cntx,
+       rntm_t*    rntm,
        cntl_t*    cntl,
        thrinfo_t* thread
      );

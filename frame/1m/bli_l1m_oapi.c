@@ -47,12 +47,12 @@ void PASTEMAC(opname,EX_SUF) \
      ( \
        obj_t*  x, \
        obj_t*  y  \
-       BLIS_OAPI_CNTX_PARAM  \
+       BLIS_OAPI_EX_PARAMS  \
      ) \
 { \
 	bli_init_once(); \
 \
-	BLIS_OAPI_CNTX_DECL \
+	BLIS_OAPI_EX_DECLS \
 \
 	num_t     dt        = bli_obj_dt( x ); \
 \
@@ -73,10 +73,10 @@ void PASTEMAC(opname,EX_SUF) \
 	    PASTEMAC(opname,_check)( x, y ); \
 \
 	/* Invoke the typed function. */ \
-	bli_call_ft_13 \
+	bli_call_ft_14 \
 	( \
 	   dt, \
-	   opname, \
+	   PASTECH(opname,BLIS_TAPI_EX_SUF), \
 	   diagoffx, \
 	   diagx, \
 	   uplox, \
@@ -85,7 +85,8 @@ void PASTEMAC(opname,EX_SUF) \
 	   n, \
 	   buf_x, rs_x, cs_x, \
 	   buf_y, rs_y, cs_y, \
-	   cntx  \
+	   cntx, \
+	   rntm  \
 	); \
 }
 
@@ -102,12 +103,12 @@ void PASTEMAC(opname,EX_SUF) \
        obj_t*  alpha, \
        obj_t*  x, \
        obj_t*  y  \
-       BLIS_OAPI_CNTX_PARAM  \
+       BLIS_OAPI_EX_PARAMS  \
      ) \
 { \
 	bli_init_once(); \
 \
-	BLIS_OAPI_CNTX_DECL \
+	BLIS_OAPI_EX_DECLS \
 \
 	num_t     dt        = bli_obj_dt( x ); \
 \
@@ -138,10 +139,10 @@ void PASTEMAC(opname,EX_SUF) \
 	buf_alpha = bli_obj_buffer_for_1x1( dt, &alpha_local ); \
 \
 	/* Invoke the typed function. */ \
-	bli_call_ft_14 \
+	bli_call_ft_15 \
 	( \
 	   dt, \
-	   opname, \
+	   PASTECH(opname,BLIS_TAPI_EX_SUF), \
 	   diagoffx, \
 	   diagx, \
 	   uplox, \
@@ -151,7 +152,8 @@ void PASTEMAC(opname,EX_SUF) \
 	   buf_alpha, \
 	   buf_x, rs_x, cs_x, \
 	   buf_y, rs_y, cs_y, \
-	   cntx  \
+	   cntx, \
+	   rntm  \
 	); \
 }
 
@@ -166,12 +168,12 @@ void PASTEMAC(opname,EX_SUF) \
      ( \
        obj_t*  alpha, \
        obj_t*  x  \
-       BLIS_OAPI_CNTX_PARAM  \
+       BLIS_OAPI_EX_PARAMS  \
      ) \
 { \
 	bli_init_once(); \
 \
-	BLIS_OAPI_CNTX_DECL \
+	BLIS_OAPI_EX_DECLS \
 \
 	num_t     dt        = bli_obj_dt( x ); \
 \
@@ -212,10 +214,10 @@ void PASTEMAC(opname,EX_SUF) \
 	buf_alpha = bli_obj_internal_scalar_buffer( &x_local ); \
 \
 	/* Invoke the typed function. */ \
-	bli_call_ft_11 \
+	bli_call_ft_12 \
 	( \
 	   dt, \
-	   opname, \
+	   PASTECH(opname,BLIS_TAPI_EX_SUF), \
 	   BLIS_NO_CONJUGATE, /* internal conjugation applied during copy-cast. */ \
 	   diagoffx, \
 	   diagx, \
@@ -224,7 +226,8 @@ void PASTEMAC(opname,EX_SUF) \
 	   n, \
 	   buf_alpha, \
 	   buf_x, rs_x, cs_x, \
-	   cntx  \
+	   cntx, \
+	   rntm  \
 	); \
 }
 
@@ -238,12 +241,12 @@ void PASTEMAC(opname,EX_SUF) \
      ( \
        obj_t*  alpha, \
        obj_t*  x  \
-       BLIS_OAPI_CNTX_PARAM  \
+       BLIS_OAPI_EX_PARAMS  \
      ) \
 { \
 	bli_init_once(); \
 \
-	BLIS_OAPI_CNTX_DECL \
+	BLIS_OAPI_EX_DECLS \
 \
 	num_t     dt        = bli_obj_dt( x ); \
 \
@@ -271,10 +274,10 @@ void PASTEMAC(opname,EX_SUF) \
 	buf_alpha = bli_obj_buffer_for_1x1( dt, &alpha_local ); \
 \
 	/* Invoke the typed function. */ \
-	bli_call_ft_11 \
+	bli_call_ft_12 \
 	( \
 	   dt, \
-	   opname, \
+	   PASTECH(opname,BLIS_TAPI_EX_SUF), \
 	   BLIS_NO_CONJUGATE, /* internal conjugation applied during copy-cast. */ \
 	   diagoffx, \
 	   diagx, \
@@ -283,7 +286,8 @@ void PASTEMAC(opname,EX_SUF) \
 	   n, \
 	   buf_alpha, \
 	   buf_x, rs_x, cs_x, \
-	   cntx  \
+	   cntx, \
+	   rntm  \
 	); \
 }
 
